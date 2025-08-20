@@ -9,9 +9,11 @@ import {
 interface TopbarProps {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  sidebarCollapsed?: boolean;
+  setSidebarCollapsed?: (collapsed: boolean) => void;
 }
 
-export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
+export default function Topbar({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed }: TopbarProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -103,7 +105,15 @@ export default function Topbar({ sidebarOpen, setSidebarOpen }: TopbarProps) {
         <div className="flex justify-start items-center">
           {/* Кнопка гамбургер - доступна на всех устройствах */}
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => {
+              if (window.innerWidth >= 1024) {
+                // На десктопе переключаем collapsed состояние
+                setSidebarCollapsed?.(!sidebarCollapsed);
+              } else {
+                // На мобильных переключаем открытие/закрытие
+                setSidebarOpen(!sidebarOpen);
+              }
+            }}
             className="p-2 mr-2 text-gray-600 rounded-lg cursor-pointer hover:text-gray-900 hover:bg-gray-100 focus:bg-gray-100 focus:ring-2 focus:ring-gray-100"
           >
             <Bars3Icon className="w-5 h-5" />

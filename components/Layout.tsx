@@ -11,7 +11,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+
+  // Сохраняем состояние sidebar в localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
+    }
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (!loading && !user && router.pathname !== '/login') {
@@ -19,15 +32,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router]);
 
-  const toggleSidebar = () => {
-    if (window.innerWidth >= 1024) {
-      // На десктопе переключаем collapsed состояние
-      setSidebarCollapsed(!sidebarCollapsed);
-    } else {
-      // На мобильных переключаем открытие/закрытие
-      setSidebarOpen(!sidebarOpen);
-    }
-  };
+
 
   if (router.pathname === '/login') {
     return <>{children}</>;
@@ -49,7 +54,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <ErrorBoundary>
       <CacheBuster>
         <div className="antialiased bg-gray-50 min-h-screen">
-          <Topbar sidebarOpen={sidebarOpen} setSidebarOpen={toggleSidebar} />
+          <Topbar 
+            sidebarOpen={sidebarOpen} 
+            setSidebarOpen={setSidebarOpen}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarCollapsed={setSidebarCollapsed}
+          />
           <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} collapsed={sidebarCollapsed} />
           
           <main className={`p-4 h-auto pt-20 bg-gray-50 ${
