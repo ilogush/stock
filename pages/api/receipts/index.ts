@@ -98,107 +98,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         prodMap = Object.fromEntries((prodRows||[]).map((p:any)=>[p.id,p.article]));
       }
 
-      if (sizeCodes.length > 0) {
-        const sizesResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/sizes`).then(r => r.json());
-        const filteredSizes = (sizesResponse.sizes || []).filter((s: any) => sizeCodes.includes(s.original_code || s.code));
-        sizeMap = Object.fromEntries(filteredSizes.map((s:any)=>[s.original_code || s.code, s.code]));
-      }
-
-              if (colorIds.length > 0) {
-  const { data: colorRows } = await supabaseAdmin.from('colors').select('id, name').in('id', colorIds);
-  colorMap = Object.fromEntries((colorRows||[]).map((c:any)=>[c.id.toString(),c.name]));
-}
-
-      const aggMap: Record<string, any> = {};
-      (itemDetails||[]).forEach((it:any)=>{
-        const key = it.receipt_id;
-        if(!aggMap[key]){
-          aggMap[key]={
-            article: prodMap[it.product_id] || '-',
-            sizes: new Set<string>(),
-            colors: new Set<string>()
-          };
-        }
-        aggMap[key].sizes.add(sizeMap[it.size_code] || it.size_code);
-                    aggMap[key].colors.add(colorMap[it.color_id] || it.color_id);
-      });
-
-      // Группируем позиции для каждого receipt
-      const itemsGroup: Record<string, any[]> = {};
-      (itemDetails||[]).forEach((it:any)=>{
-        const rId = it.receipt_id;
-        if(!itemsGroup[rId]) itemsGroup[rId]=[];
-        itemsGroup[rId].push({
-          article: prodMap[it.product_id] || '-',
-          size: sizeMap[it.size_code] || it.size_code,
-          color: colorMap[it.color_id] || it.color_id,
-          qty: it.qty
-        });
-      });
-
-      const enriched = receipts.map((r:any)=>({
-        ...r,
-        transferrer_name: usersMap[r.transferrer_id]?.first_name || '—',
-        creator_name: usersMap[r.creator_id]?.first_name || '—',
-        total_items: totalMap[r.id] || 0,
-        first_article: aggMap[r.id]?.article || '-',
-        first_size: Array.from(aggMap[r.id]?.sizes || new Set<string>())[0] || '-',
-        first_color: Array.from(aggMap[r.id]?.colors || new Set<string>())[0] || '-',
-        items: itemsGroup[r.id] || []
-      }));
-
-      // Фильтрация по поисковому запросу
+      // Упрощенная фильтрация
       let filteredReceipts = enriched;
       if (searchQuery && searchQuery.trim()) {
         const searchLower = searchQuery.toLowerCase().trim();
         filteredReceipts = enriched.filter((receipt: any) => {
-          // Поиск по номеру поступления
-          if (receipt.receipt_number?.toLowerCase().includes(searchLower)) return true;
-          
-          // Поиск по дате
-          const dateStr = new Date(receipt.received_at || receipt.created_at).toLocaleDateString('ru-RU');
-          if (dateStr.includes(searchLower)) return true;
-          
-          // Поиск по времени
-          const timeStr = new Date(receipt.received_at || receipt.created_at).toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
-          if (timeStr.includes(searchLower)) return true;
-          
-          // Поиск по артикулу
-          if (receipt.first_article?.toLowerCase().includes(searchLower)) return true;
-          
-          // Поиск по размеру
-          if (receipt.first_size?.toLowerCase().includes(searchLower)) return true;
-          
-          // Поиск по цвету (название цвета)
-          if (receipt.first_color?.toLowerCase().includes(searchLower)) return true;
-          
-          // Поиск по количеству
-          if (receipt.total_items?.toString().includes(searchLower)) return true;
-          
-          // Поиск по имени передавшего
-          if (receipt.transferrer_name?.toLowerCase().includes(searchLower)) return true;
-          
-          // Поиск по имени принявшего
-          if (receipt.creator_name?.toLowerCase().includes(searchLower)) return true;
-          
-          // Поиск по примечаниям
-          if (receipt.notes?.toLowerCase().includes(searchLower)) return true;
-          
-          // Поиск по всем позициям
-          if (receipt.items && receipt.items.some((item: any) => 
-            item.article?.toLowerCase().includes(searchLower) ||
-            item.size?.toLowerCase().includes(searchLower) ||
-            item.color?.toLowerCase().includes(searchLower) ||
-            item.qty?.toString().includes(searchLower)
-          )) return true;
-          
-          return false;
+          return receipt.receipt_number?.toLowerCase().includes(searchLower) ||
+                 receipt.notes?.toLowerCase().includes(searchLower);
         });
-        
         count = filteredReceipts.length;
       }
 
-      // Применяем пагинацию к отфильтрованным результатам
+      // Применяем пагинацию
       const paginatedReceipts = searchQuery && searchQuery.trim() 
         ? filteredReceipts.slice(offsetNum, offsetNum + limitNum)
         : filteredReceipts;
