@@ -4,16 +4,7 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      // Проверяем переменные окружения
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        console.error('Отсутствуют переменные окружения Supabase');
-        return res.status(500).json({ 
-          error: 'Ошибка конфигурации сервера',
-          details: 'Переменные окружения Supabase не настроены',
-          receipts: [],
-          pagination: { total: 0, page: 1, limit: 20, totalPages: 0 }
-        });
-      }
+
       // ОТКЛЮЧАЕМ КЭШИРОВАНИЕ - данные загружаются в реальном времени
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
@@ -229,20 +220,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } catch (error) {
       console.error('Ошибка сервера в API receipts:', error);
-      
-      // Проверяем переменные окружения
-      const envCheck = {
-        supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        supabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        nodeEnv: process.env.NODE_ENV
-      };
-      
-      console.error('Проверка переменных окружения:', envCheck);
-      
       return res.status(500).json({ 
         error: 'Внутренняя ошибка сервера',
-        details: process.env.NODE_ENV === 'development' ? error.message : 'См. логи сервера',
-        envCheck: process.env.NODE_ENV === 'development' ? envCheck : undefined
+        receipts: [],
+        pagination: { total: 0, page: 1, limit: 20, totalPages: 0 }
       });
     }
   }
