@@ -38,13 +38,28 @@ const LoginPage: NextPage = () => {
     setLoading(true);
     
     try {
-      const success = await login(username, password);
+      // Определяем, является ли введенное значение email
+      const isEmail = username.includes('@');
       
-      if (success) {
+      const loginData = isEmail 
+        ? { email: username, password }
+        : { username: username, password };
+      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
         showToast(TOAST_MESSAGES.SUCCESS.LOGIN, 'success');
         router.push('/');
       } else {
-        showToast('Неверный email/имя пользователя или пароль', 'error');
+        showToast(data.error || 'Неверный email/имя пользователя или пароль', 'error');
       }
     } catch (error: any) {
       showToast(error.message || 'Ошибка при входе', 'error');
@@ -169,14 +184,14 @@ const LoginPage: NextPage = () => {
               </div>
 
               <div>
-                <label className="text-slate-900 text-sm font-medium mb-2 block">Имя пользователя</label>
+                <label className="text-slate-900 text-sm font-medium mb-2 block">Email или имя пользователя</label>
                 <div className="relative flex items-center">
                   <input
                     name="username"
                     type="text"
                     required
                     className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-blue-600"
-                    placeholder="Введите имя пользователя"
+                    placeholder="Введите email или имя пользователя"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                   />

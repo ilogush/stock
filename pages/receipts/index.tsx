@@ -57,12 +57,6 @@ const ReceiptsPage: NextPage = () => {
   const fetchReceipts = async (page = 1, limit?: number, search = searchQuery) => {
     setLoading(true);
     try {
-      // Проверяем авторизацию
-      if (!user) {
-        console.log('❌ Пользователь не авторизован');
-        setLoading(false);
-        return;
-      }
       const currentLimit = limit || pagination.limit;
       const params = new URLSearchParams({
         page: page.toString(),
@@ -73,22 +67,12 @@ const ReceiptsPage: NextPage = () => {
         params.append('search', search.trim());
       }
 
-      console.log('🔍 Запрос поступлений:', `/api/receipts?${params}`);
-      const response = await fetch(`/api/receipts?${params}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
+      const response = await fetch(`/api/receipts?${params}`);
       const data = await response.json();
-
-      console.log('📦 Ответ API поступлений:', data);
 
       if (!response.ok) throw new Error(data.error);
 
       const recs: Receipt[] = data.receipts || [];
-      console.log('📋 Получено поступлений:', recs.length);
       setReceipts(recs);
 
       // Формируем плоские строки
@@ -125,16 +109,13 @@ const ReceiptsPage: NextPage = () => {
   };
 
   useEffect(() => {
-    console.log('🔄 useEffect receipts - загрузка страницы, user:', user?.id);
     // Получаем поисковый запрос из URL при загрузке страницы
     const urlSearchQuery = router.query.search as string;
     if (urlSearchQuery) {
       setSearchQuery(urlSearchQuery);
     }
-    if (user) {
-      fetchReceipts(1, pagination.limit, urlSearchQuery || '');
-    }
-  }, [router.query.search, user]);
+    fetchReceipts(1, pagination.limit, urlSearchQuery || '');
+  }, [router.query.search]);
 
     // Убираем автоматическое обновление при возврате на страницу - это создает лишние запросы
 
@@ -153,11 +134,6 @@ const ReceiptsPage: NextPage = () => {
 
   return (
     <div>
-      {/* Отладочная информация */}
-      <div className="bg-yellow-100 p-2 mb-4 text-xs">
-        🔍 Отладка: receipts={receipts.length}, rows={rows.length}, loading={loading.toString()}, user={user?.id}
-      </div>
-      
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Поступления товаров</h1>
         <div className="flex items-center gap-3">
@@ -248,9 +224,6 @@ const ReceiptsPage: NextPage = () => {
                       </div>
                       <div className="text-sm text-gray-400">
                         {searchQuery ? 'Попробуйте изменить поисковый запрос' : 'Создайте первое поступление'}
-                      </div>
-                      <div className="text-xs text-red-500 mt-2">
-                        Отладка: receipts={receipts.length}, rows={rows.length}, loading={loading.toString()}
                       </div>
                     </div>
                   </td>

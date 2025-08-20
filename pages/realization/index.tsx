@@ -24,32 +24,12 @@ const RealizationPage: NextPage = () => {
   const fetchData = async (page = 1, limit = pagination.limit, search = searchQuery) => {
     setLoading(true);
     try {
-      // Проверяем авторизацию
-      if (!user) {
-        console.log('❌ Пользователь не авторизован');
-        setLoading(false);
-        return;
-      }
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (search.trim()) params.append('search', encodeURIComponent(search.trim()));
-      
-      console.log('🔍 Запрос реализаций:', `/api/realization?${params.toString()}`);
-      const res = await fetch(`/api/realization?${params.toString()}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
+      const res = await fetch(`/api/realization?${params.toString()}`);
       const data = await res.json();
-      
-      console.log('📦 Ответ API реализаций:', data);
-      
       if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
-      
-      const realizations = data.realizations || [];
-      console.log('📋 Получено реализаций:', realizations.length);
-      setList(realizations);
+      setList(data.realizations || []);
       setPagination(data.pagination || { total: 0, page, limit, totalPages: 0 });
     } catch (err: any) {
       console.error(err);
@@ -61,13 +41,10 @@ const RealizationPage: NextPage = () => {
 
   // начальная загрузка + реакция на search
   useEffect(() => {
-    console.log('🔄 useEffect realization - загрузка страницы, user:', user?.id);
     const q = router.query.search as string;
     setSearchQuery(q || '');
-    if (user) {
-      fetchData(1, pagination.limit, q || '');
-    }
-  }, [router.query.search, user]);
+    fetchData(1, pagination.limit, q || '');
+  }, [router.query.search]);
 
     // Убираем автоматическое обновление при возврате на страницу - это создает лишние запросы
 
@@ -81,11 +58,6 @@ const RealizationPage: NextPage = () => {
 
   return (
     <div>
-      {/* Отладочная информация */}
-      <div className="bg-yellow-100 p-2 mb-4 text-xs">
-        🔍 Отладка: list={list.length}, loading={loading.toString()}, user={user?.id}
-      </div>
-      
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Реализация</h1>
         <div className="flex items-center gap-3">
@@ -172,9 +144,6 @@ const RealizationPage: NextPage = () => {
                       </div>
                       <div className="text-sm text-gray-400">
                         {searchQuery ? 'Попробуйте изменить поисковый запрос' : 'Создайте первую запись реализации'}
-                      </div>
-                      <div className="text-xs text-red-500 mt-2">
-                        Отладка: list={list.length}, loading={loading.toString()}
                       </div>
                     </div>
                   </td>
