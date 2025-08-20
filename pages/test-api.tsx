@@ -4,6 +4,7 @@ export default function TestApiPage() {
   const [receiptsData, setReceiptsData] = useState<any>(null);
   const [realizationData, setRealizationData] = useState<any>(null);
   const [envData, setEnvData] = useState<any>(null);
+  const [supabaseTestData, setSupabaseTestData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,6 +17,12 @@ export default function TestApiPage() {
         const envResult = await envResponse.json();
         console.log('🔧 Переменные окружения:', envResult);
         setEnvData(envResult);
+        
+        // Тест Supabase подключения
+        const supabaseResponse = await fetch('/api/debug/supabase-test');
+        const supabaseResult = await supabaseResponse.json();
+        console.log('🔗 Тест Supabase:', supabaseResult);
+        setSupabaseTestData(supabaseResult);
         
         // Тест API поступлений
         const receiptsResponse = await fetch('/api/receipts');
@@ -47,11 +54,18 @@ export default function TestApiPage() {
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Тест API</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="border p-4 rounded">
           <h2 className="font-bold mb-2">Переменные окружения</h2>
           <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
             {JSON.stringify(envData, null, 2)}
+          </pre>
+        </div>
+        
+        <div className="border p-4 rounded">
+          <h2 className="font-bold mb-2">Тест Supabase</h2>
+          <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
+            {JSON.stringify(supabaseTestData, null, 2)}
           </pre>
         </div>
         
