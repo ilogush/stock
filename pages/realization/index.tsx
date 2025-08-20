@@ -7,7 +7,22 @@ import Paginator from '../../components/Paginator';
 import { useToast } from '../../components/ToastContext';
 import { useAuth } from '../../components/AuthContext';
 import { useUserRole } from '../../lib/hooks/useUserRole';
-import { Realization } from '../../types';
+
+interface Realization {
+  id: string;
+  realization_number: string;
+  shipped_at: string;
+  created_at: string;
+  updated_at: string;
+  notes?: string;
+  sender_name?: string;
+  recipient_name?: string;
+  total_items?: number;
+  first_article?: string;
+  first_size?: string;
+  first_color?: string;
+  items?: any[];
+}
 
 const RealizationPage: NextPage = () => {
   const router = useRouter();
@@ -15,72 +30,96 @@ const RealizationPage: NextPage = () => {
   const { user } = useAuth();
   const { hasAnyRole } = useUserRole();
 
-  const [list, setList] = useState<Realization[]>([]);
+  const [realizations, setRealizations] = useState<Realization[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 0 });
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchData = async (page = 1, limit = pagination.limit, search = searchQuery) => {
+  const fetchRealizations = async (page = 1, limit?: number, search = searchQuery) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search.trim()) params.append('search', encodeURIComponent(search.trim()));
-      const res = await fetch(`/api/realization?${params.toString()}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
-      setList(data.realizations || []);
-      setPagination(data.pagination || { total: 0, page, limit, totalPages: 0 });
-    } catch (err: any) {
-      console.error(err);
-      showToast(err.message, 'error');
+      const currentLimit = limit || pagination.limit;
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: currentLimit.toString(),
+      });
+
+      if (search && search.trim()) {
+        params.append('search', search.trim());
+      }
+
+      const response = await fetch(`/api/realization?${params}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка загрузки реализаций');
+      }
+
+      setRealizations(data.realizations || []);
+      setPagination(data.pagination || { total: 0, page, limit: currentLimit, totalPages: 0 });
+
+    } catch (error: any) {
+      console.error('Ошибка загрузки реализаций:', error);
+      showToast(error.message || 'Ошибка загрузки реализаций', 'error');
+      setRealizations([]);
+      setPagination({ total: 0, page: 1, limit: 20, totalPages: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  // начальная загрузка + реакция на search
   useEffect(() => {
-    const q = router.query.search as string;
-    setSearchQuery(q || '');
-    fetchData(1, pagination.limit, q || '');
-  }, [router.query.search]);
+    fetchRealizations();
+  }, []);
 
-    // Убираем автоматическое обновление при возврате на страницу - это создает лишние запросы
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      fetchRealizations(1, pagination.limit, value);
+    }, 500);
+  };
 
-  // Роль пользователя берём из хука
+  const handlePageChange = (page: number) => {
+    fetchRealizations(page, pagination.limit, searchQuery);
+  };
 
-  const handlePageChange = (p: number) => {
-    // Обновляем состояние пагинации
-    setPagination(prev => ({ ...prev, page: p }));
-    fetchData(p, pagination.limit, searchQuery);
+  const handlePageSizeChange = (newLimit: number) => {
+    setPagination(prev => ({ ...prev, limit: newLimit }));
+    fetchRealizations(1, newLimit, searchQuery);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Вы уверены, что хотите удалить эту реализацию?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/realization/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Ошибка удаления');
+      }
+
+      showToast('Реализация удалена', 'success');
+      fetchRealizations(pagination.page, pagination.limit, searchQuery);
+    } catch (error: any) {
+      console.error('Ошибка удаления:', error);
+      showToast(error.message || 'Ошибка удаления', 'error');
+    }
   };
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Реализация</h1>
-        <div className="flex items-center gap-3">
-          {/* Поиск справа от заголовка */}
-          <div className="relative w-full sm:w-64">
-            <input
-              type="text"
-              placeholder="Поиск доставок..."
-              value={searchQuery}
-              onChange={(e) => {
-                const value = e.target.value;
-                setSearchQuery(value);
-                // дебаунс 500 мс без накопления таймеров
-                if ((searchDebounceRef.current as any)) {
-                  clearTimeout(searchDebounceRef.current as any);
-                }
-                searchDebounceRef.current = setTimeout(() => {
-                  fetchData(1, pagination.limit, value);
-                }, 500) as any;
-              }}
-              className="search-input block w-full"
-            />
-          </div>
+        <div className="flex items-center gap-2">
           {hasAnyRole(['admin', 'director', 'storekeeper']) && (
             <Link href="/realization/new" className="btn text-xs flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
@@ -102,107 +141,117 @@ const RealizationPage: NextPage = () => {
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
                 strokeWidth={2} 
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" 
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 002 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" 
               />
             </svg>
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col flex-grow">
-        <div className="overflow-x-auto flex-grow">
-          <table className="min-w-full divide-y divide-gray-200 border-0 rounded-none">
+      {/* Поиск */}
+      <div className="mb-4">
+        <div className="relative w-full sm:w-64">
+          <input
+            type="text"
+            placeholder="Поиск реализаций..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="search-input block w-full"
+          />
+        </div>
+      </div>
+
+      {/* Таблица */}
+      <div className="overflow-x-auto">
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="text-gray-500">Загрузка...</div>
+          </div>
+        ) : realizations.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-500">Реализации не найдены</div>
+          </div>
+        ) : (
+          <table className="table-standard">
             <thead>
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Номер</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Дата</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Артикул</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Размер</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Цвет</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase tracking-wider">шт.</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Кому передали</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Передал</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">Примечания</th>
+                <th className="table-header">Номер</th>
+                <th className="table-header">Дата</th>
+                <th className="table-header">Отправитель</th>
+                <th className="table-header">Получатель</th>
+                <th className="table-header">Товары</th>
+                <th className="table-header">Количество</th>
+                <th className="table-header">Примечания</th>
+                <th className="table-header">Действия</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {loading ? (
-              <tr>
-                  <td colSpan={9} className="text-center p-4">
-                  <div className="text-gray-500">Загрузка...</div>
-                </td>
-                </tr>
-              ) : list.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="text-center p-8 text-gray-500">
-                    <div className="flex flex-col items-center space-y-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-12 h-12 text-gray-300">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
-                      </svg>
-                      <div className="text-lg font-medium">
-                        Записей реализации нет
-                      </div>
-                      <div className="text-sm text-gray-400">
-                        {searchQuery ? 'Попробуйте изменить поисковый запрос' : 'Создайте первую запись реализации'}
-                      </div>
+            <tbody className="table-body">
+              {realizations.map((realization) => (
+                <tr key={realization.id} className="table-row-hover">
+                  <td className="table-cell">
+                    <Link 
+                      href={`/realization/${realization.id}`}
+                      className="text-blue-600 hover:underline font-medium"
+                    >
+                      {realization.realization_number}
+                    </Link>
+                  </td>
+                  <td className="table-cell">
+                    {new Date(realization.shipped_at || realization.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="table-cell">{realization.sender_name || '—'}</td>
+                  <td className="table-cell">{realization.recipient_name || '—'}</td>
+                  <td className="table-cell">
+                    {realization.first_article || '—'}
+                    {realization.items && realization.items.length > 1 && (
+                      <span className="text-gray-500 text-xs ml-1">
+                        +{realization.items.length - 1}
+                      </span>
+                    )}
+                  </td>
+                  <td className="table-cell">{realization.total_items || 0} шт.</td>
+                  <td className="table-cell max-w-xs truncate">
+                    {realization.notes || '—'}
+                  </td>
+                  <td className="table-cell">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/realization/${realization.id}`}
+                        className="btn text-xs"
+                        title="Просмотр"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                        просмотр
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(realization.id)}
+                        className="btn text-xs"
+                        title="Удалить"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                        удалить
+                      </button>
                     </div>
                   </td>
                 </tr>
-              ) : (
-                list.flatMap((rec:any)=> {
-                  const items = rec.items || [];
-                  if (items.length === 0) {
-                    return [{ rec, it: { article: '-', size: '-', color: '-', qty: 0 }, isFirst: true }];
-                  }
-                  return items.map((it:any, idx:number)=> { 
-                    // Показываем артикул только для первого размера каждого цвета
-                    const isFirstForColor = idx === 0 || items[idx - 1]?.color !== it.color;
-                    return { 
-                      rec, 
-                      it: { 
-                        ...it, 
-                        article: isFirstForColor ? it.article : '' 
-                      }, 
-                      isFirst: idx === 0 
-                    };
-                  });
-                }).map(({rec,it,isFirst}:any, idx:number) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className={`table-cell-mono ${!isFirst ? 'border-t-0' : ''}`}>
-                      {isFirst && (
-                        <span className="px-2 py-0.5 rounded-full border border-gray-800 bg-gray-800 text-white text-xs">{rec.realization_number}</span>
-                      )}
-                    </td>
-                    <td className={`px-3 py-2 whitespace-nowrap text-sm text-gray-900 ${!isFirst ? 'border-t-0' : ''}`}>{isFirst ? new Date(rec.shipped_at || rec.created_at).toLocaleDateString('ru-RU') : ''}</td>
-                    <td className="table-cell-mono">{it.article || '—'}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.size}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{it.color}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 text-center">{it.qty}</td>
-                    <td className={`px-3 py-2 whitespace-nowrap text-sm text-gray-900 ${!isFirst ? 'border-t-0' : ''}`}>{isFirst ? (rec.recipient_name || '—') : ''}</td>
-                    <td className={`px-3 py-2 whitespace-nowrap text-sm text-gray-900 ${!isFirst ? 'border-t-0' : ''}`}>{isFirst ? (rec.sender_name || '—') : ''}</td>
-                    <td className={`px-3 py-2 whitespace-nowrap text-sm text-gray-900 ${!isFirst ? 'border-t-0' : ''}`}>{isFirst ? (rec.notes || '-') : ''}</td>
-              </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
+        )}
+      </div>
 
-        {pagination.total > 0 && (
-          <div className="mt-4">
+      {/* Пагинация */}
+      {!loading && realizations.length > 0 && (
+        <div className="mt-6">
           <Paginator
             total={pagination.total}
             page={pagination.page}
             limit={pagination.limit}
-              onPageChange={handlePageChange}
-              onPageSizeChange={(l)=>fetchData(1,l,searchQuery)}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
           />
-          </div>
-        )}
-      </div>
-
-      <style jsx>{`
-      `}</style>
+        </div>
+      )}
     </div>
   );
 };
