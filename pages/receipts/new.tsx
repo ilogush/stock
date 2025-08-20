@@ -285,7 +285,7 @@ const NewReceiptPage: NextPage = () => {
       product_name: product?.name || '',
       product_article: product?.article || '',
       size_name: size?.code || currentItem.size_code || '',
-      color_name: productColors.find(c => c.id === currentItem.color_id)?.name || `ID: ${currentItem.color_id}`,
+      color_name: colors.find(c => c.id === currentItem.color_id)?.name || `ID: ${currentItem.color_id}`,
       brand_name: brand?.name || ''
     };
 
@@ -565,12 +565,9 @@ const NewReceiptPage: NextPage = () => {
                 onChange={(e) => handleCurrentItemChange('color_id', parseInt(e.target.value) || 0)}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
                 required
-                disabled={productColors.length === 0}
               >
-                <option value="">
-                  {productColors.length === 0 ? 'Сначала выберите товар' : 'Выберите цвет'}
-                </option>
-                {productColors.map(color => (
+                <option value="">Выберите цвет</option>
+                {colors.map(color => (
                   <option key={color.id} value={color.id}>
                     {color.name}
                   </option>

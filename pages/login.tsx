@@ -38,28 +38,13 @@ const LoginPage: NextPage = () => {
     setLoading(true);
     
     try {
-      // Определяем, является ли введенное значение email
-      const isEmail = username.includes('@');
+      const success = await login(username, password);
       
-      const loginData = isEmail 
-        ? { email: username, password }
-        : { username: username, password };
-      
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      if (success) {
         showToast(TOAST_MESSAGES.SUCCESS.LOGIN, 'success');
         router.push('/');
       } else {
-        showToast(data.error || 'Неверный email/имя пользователя или пароль', 'error');
+        showToast('Неверный email или пароль', 'error');
       }
     } catch (error: any) {
       showToast(error.message || 'Ошибка при входе', 'error');
@@ -102,13 +87,6 @@ const LoginPage: NextPage = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Валидация пароля
-    if (regPassword.length < 4) {
-      showToast('Пароль должен содержать минимум 4 символа', 'error');
-      setLoading(false);
-      return;
-    }
     
     try {
       // Создаем пользователя
@@ -184,14 +162,14 @@ const LoginPage: NextPage = () => {
               </div>
 
               <div>
-                <label className="text-slate-900 text-sm font-medium mb-2 block">Email или имя пользователя</label>
+                <label className="text-slate-900 text-sm font-medium mb-2 block">Имя пользователя</label>
                 <div className="relative flex items-center">
                   <input
                     name="username"
-                    type="text"
+                    type="email"
                     required
                     className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-blue-600"
-                    placeholder="Введите email или имя пользователя"
+                    placeholder="Введите имя пользователя"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                   />
@@ -435,9 +413,8 @@ const LoginPage: NextPage = () => {
                     name="regPassword"
                     type={showRegPassword ? "text" : "password"}
                     required
-                    minLength={4}
                     className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-blue-600"
-                    placeholder="Создайте пароль (минимум 4 символа)"
+                    placeholder="Создайте пароль"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                   />

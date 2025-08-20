@@ -18,10 +18,6 @@ export default withManagement(async function handler(req: AuthenticatedRequest, 
         return res.status(400).json({ error: 'Email и пароль обязательны' });
       }
 
-      if (password.length < 4) {
-        return res.status(400).json({ error: 'Пароль должен содержать минимум 4 символа' });
-      }
-
       const hashedPassword = await hashPassword(password);
 
       const { data, error } = await supabaseAdmin

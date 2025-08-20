@@ -4,12 +4,8 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-
       // ОТКЛЮЧАЕМ КЭШИРОВАНИЕ - данные загружаются в реальном времени
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.setHeader('Surrogate-Control', 'no-store');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       
       const { limit = '20', offset = '0', page = '1', search } = req.query;
 
@@ -219,12 +215,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
     } catch (error) {
-      console.error('Ошибка сервера в API receipts:', error);
-      return res.status(500).json({ 
-        error: 'Внутренняя ошибка сервера',
-        receipts: [],
-        pagination: { total: 0, page: 1, limit: 20, totalPages: 0 }
-      });
+      console.error('Ошибка сервера:', error);
+      return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 

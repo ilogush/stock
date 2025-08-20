@@ -61,8 +61,8 @@ const NewUserPage: NextPage = () => {
       return;
     }
 
-    if (!password || password.length < 4) {
-      showToast('Пароль обязателен и должен быть не короче 4 символов', 'error');
+    if (!password || password.length < 6) {
+      showToast('Пароль обязателен и должен быть не короче 6 символов', 'error');
       return;
     }
 
@@ -159,12 +159,11 @@ const NewUserPage: NextPage = () => {
 
           {/* Пароль */}
           <div className="flex flex-col">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Пароль * (минимум 4 символа)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Пароль *</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                minLength={4}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10"
                 value={password}
                 onChange={(e)=>setPassword(e.target.value)}

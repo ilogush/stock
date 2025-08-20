@@ -4,12 +4,8 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-
       // ОТКЛЮЧАЕМ КЭШИРОВАНИЕ - данные загружаются в реальном времени
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.setHeader('Surrogate-Control', 'no-store');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
       
       const { limit = '20', page = '1', search } = req.query;
 
@@ -31,7 +27,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error('Ошибка получения реализаций:', error);
         return res.status(500).json({ error: 'Ошибка получения реализаций' });
       }
-
 
       const realizations = data || [];
 
@@ -154,12 +149,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pagination: { total: totalFiltered, page: pageNum, limit: limitNum, totalPages }
       });
     } catch (e) {
-      console.error('Серверная ошибка в API realization:', e);
-      return res.status(500).json({ 
-        error: 'Внутренняя ошибка сервера',
-        realizations: [],
-        pagination: { total: 0, page: 1, limit: 20, totalPages: 0 }
-      });
+      console.error('Серверная ошибка:', e);
+      return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
