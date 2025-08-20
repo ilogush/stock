@@ -27,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error('Ошибка получения реализаций:', error);
         return res.status(500).json({ error: 'Ошибка получения реализаций' });
       }
+      console.log('Получены реализации:', data?.length || 0);
 
       const realizations = data || [];
 
@@ -149,8 +150,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pagination: { total: totalFiltered, page: pageNum, limit: limitNum, totalPages }
       });
     } catch (e) {
-      console.error('Серверная ошибка:', e);
-      return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+      console.error('Серверная ошибка в API realization:', e);
+      console.error('Stack trace:', e instanceof Error ? e.stack : 'No stack trace');
+      return res.status(500).json({ 
+        error: 'Внутренняя ошибка сервера',
+        details: process.env.NODE_ENV === 'development' ? e instanceof Error ? e.message : String(e) : undefined
+      });
     }
   }
 
