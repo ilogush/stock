@@ -15,6 +15,7 @@ const LoginPage: NextPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoginForm, setIsLoginForm] = useState(true);
+  const [loginMode, setLoginMode] = useState<'email' | 'password-only'>('email');
   
   // Поля для регистрации
   const [firstName, setFirstName] = useState('');
@@ -42,19 +43,26 @@ const LoginPage: NextPage = () => {
     }
     
     try {
-      // Определяем, является ли введенное значение email или именем
-      const isEmail = username.includes('@');
-      const loginData = isEmail 
-        ? { email: username, password }
-        : { username, password };
+      let loginData;
       
-      const success = await login(username, password);
+      if (loginMode === 'password-only') {
+        // Вход только по паролю
+        loginData = { password };
+      } else {
+        // Обычный вход по email/имени и паролю
+        const isEmail = username.includes('@');
+        loginData = isEmail 
+          ? { email: username, password }
+          : { username, password };
+      }
+      
+      const success = await login(username, password, loginMode === 'password-only');
       
       if (success) {
         showToast(TOAST_MESSAGES.SUCCESS.LOGIN, 'success');
         router.push('/');
       } else {
-        showToast('Неверный email/имя или пароль', 'error');
+        showToast(loginMode === 'password-only' ? 'Неверный пароль' : 'Неверный email/имя или пароль', 'error');
       }
     } catch (error: any) {
       showToast(error.message || 'Ошибка при входе', 'error');
@@ -142,21 +150,49 @@ const LoginPage: NextPage = () => {
                 <h1 className="text-slate-900 text-3xl font-semibold">Вход</h1>
               </div>
 
-              <div>
-                <label className="text-slate-900 text-sm font-medium mb-2 block">Email или имя пользователя</label>
-                <div className="relative flex items-center">
-                  <input
-                    name="username"
-                    type="text"
-                    required
-                    className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-blue-600"
-                    placeholder="Введите email или имя"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                  <UserIcon className="w-[18px] h-[18px] absolute right-4 text-gray-400" />
-                </div>
+              {/* Переключатель режима входа */}
+              <div className="flex space-x-4 mb-4">
+                <button
+                  type="button"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    loginMode === 'email' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                  onClick={() => setLoginMode('email')}
+                >
+                  Email/Имя
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    loginMode === 'password-only' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                  onClick={() => setLoginMode('password-only')}
+                >
+                  Только пароль
+                </button>
               </div>
+
+              {loginMode === 'email' && (
+                <div>
+                  <label className="text-slate-900 text-sm font-medium mb-2 block">Email или имя пользователя</label>
+                  <div className="relative flex items-center">
+                    <input
+                      name="username"
+                      type="text"
+                      required
+                      className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-blue-600"
+                      placeholder="Введите email или имя"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                    />
+                    <UserIcon className="w-[18px] h-[18px] absolute right-4 text-gray-400" />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="text-slate-900 text-sm font-medium mb-2 block">Пароль</label>

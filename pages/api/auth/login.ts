@@ -15,9 +15,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Пароль обязателен' });
     }
 
+    // Если не указан email и username, но указан пароль - ищем пользователя только по паролю
     if (!email && !username) {
-      return res.status(400).json({ error: 'Email или имя пользователя обязательны' });
-    }
+      if (!password) {
+        return res.status(400).json({ error: 'Пароль обязателен' });
+      }
+      
+      // Ищем пользователя только по паролю
+      const result = await supabase
+        .from('users')
+        .select('*')
+        .not('is_blocked', 'eq', true)
+        .not('is_deleted', 'eq', true);
+      
+      if (result.data && result.data.length > 0) {
+        // Проверяем пароль для каждого пользователя
+        for (const candidateUser of result.data) {
+          const isValidPassword = await verifyPassword(password, candidateUser.password_hash);
+          
+          if (isValidPassword) {
+            user = candidateUser;
+            user.password_verified = true;
+            break;
+          }
+        }
+        
+        if (!user) {
+          return res.status(401).json({ error: 'Неверный пароль' });
+        }
+      } else {
+        return res.status(401).json({ error: 'Пользователи не найдены' });
+      }
+    } else {
+      // Обычная логика поиска по email или username
 
     // Проверяем минимальную длину пароля
     if (password.length < 4) {
@@ -72,6 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         user = null;
         error = result.error || { message: 'Пользователь не найден' };
       }
+    }
     }
 
     if (error || !user) {
