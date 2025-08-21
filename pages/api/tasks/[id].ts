@@ -37,8 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { error: updateError } = await supabaseAdmin
           .from('tasks')
           .update({ 
-            status: 'viewed',
-            updated_at: new Date().toISOString()
+            status: 'viewed'
           })
           .eq('id', id);
 
@@ -58,7 +57,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           // Обновляем данные задания
           task.status = 'viewed';
-          task.updated_at = new Date().toISOString();
         }
       }
 
