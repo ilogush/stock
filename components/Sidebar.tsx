@@ -107,17 +107,32 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
   };
 
   const getMenuItems = (): MenuItem[] => {
-    // Все пользователи должны иметь доступ к дашборду с задачами
+    // Базовое меню для всех
     const baseMenu = [
       { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon }
     ];
 
+    // Пользователь - базовый доступ (только дашборд, профиль, чат)
     if (userRole === 'user') {
-      return baseMenu;
+      return [
+        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
+        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined }
+      ];
     }
 
-    // Кладовщик — порядок как у админа, за исключением запретных
+    // Кладовщик - просмотр поступлений/реализации, создание цветов
     if (userRole === 'storekeeper') {
+      return [
+        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
+        { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
+        { href: '/realization', label: 'Реализация', icon: TruckIcon },
+        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
+        { href: '/colors', label: 'Цвета', icon: SwatchIcon }
+      ];
+    }
+
+    // Менеджер - все как админ, кроме "Действия" и "Пользователи"
+    if (userRole === 'manager') {
       return [
         { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
         { href: '/products', label: 'Товары', icon: CubeIcon },
@@ -125,81 +140,15 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
         { href: '/realization', label: 'Реализация', icon: TruckIcon },
         { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined }
-      ];
-    }
-
-    // Бригадир
-    if (userRole === 'brigadir') {
-      return [
-        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
-        { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
+        { href: '/brands', label: 'Бренды', icon: TagIcon },
+        { href: '/companies', label: 'Компании', icon: BuildingOffice2Icon },
         { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-        { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon }
+        { href: '/colors', label: 'Цвета', icon: SwatchIcon }
       ];
     }
 
-    // Менеджер
-    if (userRole === 'manager') {
-      return [
-        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
-        { href: '/products', label: 'Товары', icon: CubeIcon },
-        { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-        { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon }
-      ];
-    }
-
-    // Бренд-менеджер
-    if (userRole === 'brand_manager') {
-      return [
-        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
-        { href: '/products', label: 'Товары', icon: CubeIcon },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-        { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon }
-      ];
-    }
-
-    // Менеджер продаж
-    if (userRole === 'sales_manager') {
-      return [
-        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
-        { href: '/realization', label: 'Реализация', icon: TruckIcon },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-        { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon }
-      ];
-    }
-
-    // Менеджер производства
-    if (userRole === 'production_manager') {
-      return [
-        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
-        { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-        { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon }
-      ];
-    }
-
-    // Бухгалтер
-    if (userRole === 'accountant') {
-      return [
-        { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
-        { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
-        { href: '/products', label: 'Товары', icon: CubeIcon },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined }
-      ];
-    }
-
-    // Администратор и директор - полный доступ
-    if (userRole === 'admin' || userRole === 'director') {
+    // Администратор - полный доступ
+    if (userRole === 'admin') {
       return [
         { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
         { href: '/products', label: 'Товары', icon: CubeIcon },
@@ -212,8 +161,7 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/actions', label: 'Действия', icon: ClockIcon },
         { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
         { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/users', label: 'Пользователи', icon: UsersIcon },
-
+        { href: '/users', label: 'Пользователи', icon: UsersIcon }
       ];
     }
 

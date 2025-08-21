@@ -25,12 +25,9 @@ export interface AuthenticatedRequest extends NextApiRequest {
  */
 export const ROLES = {
   ADMIN: 1,          // Администратор - полный доступ
-  DIRECTOR: 2,       // Директор - управление и отчеты
-  MANAGER: 3,        // Менеджер - товары, заказы, клиенты  
-  BRAND_MANAGER: 4,  // Бренд-менеджер - только свои бренды
-  STOREKEEPER: 5,    // Кладовщик - склад и поступления
-  BRIGADIR: 6,       // Бригадир - производство
-  USER: 7            // Обычный пользователь - только профиль
+  MANAGER: 4,        // Менеджер - все как админ, кроме "Действия" и "Пользователи"
+  STOREKEEPER: 2,    // Кладовщик - просмотр поступлений/реализации, создание цветов
+  USER: 8            // Пользователь - базовый доступ (только дашборд, профиль, чат)
 } as const;
 
 /**
@@ -38,20 +35,56 @@ export const ROLES = {
  */
 export const RoleChecks = {
   isAdmin: (roleId: number) => roleId === ROLES.ADMIN,
-  isDirector: (roleId: number) => roleId === ROLES.DIRECTOR,
   isManager: (roleId: number) => roleId === ROLES.MANAGER,
-  isBrandManager: (roleId: number) => roleId === ROLES.BRAND_MANAGER,
   isStorekeeper: (roleId: number) => roleId === ROLES.STOREKEEPER,
-  isBrigadir: (roleId: number) => roleId === ROLES.BRIGADIR,
   isUser: (roleId: number) => roleId === ROLES.USER,
   
   // Комбинированные проверки
-  isAdminOrDirector: (roleId: number) => ([ROLES.ADMIN, ROLES.DIRECTOR] as number[]).includes(roleId),
-  isManagement: (roleId: number) => ([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER] as number[]).includes(roleId),
-  canManageProducts: (roleId: number) => ([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.BRAND_MANAGER] as number[]).includes(roleId),
-  canManageWarehouse: (roleId: number) => ([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
-  canManageProduction: (roleId: number) => ([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.BRIGADIR] as number[]).includes(roleId),
-  canViewReports: (roleId: number) => ([ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER] as number[]).includes(roleId)
+  isAdminOrManager: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  isManagement: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
+  
+  // Управление товарами - админ и менеджер
+  canManageProducts: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  
+  // Управление складом - админ и менеджер
+  canManageWarehouse: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  
+  // Управление брендами - админ и менеджер
+  canManageBrands: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  
+  // Управление пользователями - только админ
+  canManageUsers: (roleId: number) => roleId === ROLES.ADMIN,
+  
+  // Управление действиями - только админ
+  canManageActions: (roleId: number) => roleId === ROLES.ADMIN,
+  
+  // Просмотр отчетов - админ, менеджер, кладовщик
+  canViewReports: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
+  
+  // Доступ к чату - все роли
+  canAccessChat: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER, ROLES.USER] as number[]).includes(roleId),
+  
+  // Просмотр поступлений - все кроме пользователей
+  canViewReceipts: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
+  
+  // Создание поступлений - только кладовщик
+  canCreateReceipts: (roleId: number) => roleId === ROLES.STOREKEEPER,
+  
+  // Просмотр реализации - все кроме пользователей
+  canViewRealization: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
+  
+  // Создание реализации - только кладовщик
+  canCreateRealization: (roleId: number) => roleId === ROLES.STOREKEEPER,
+  
+  // Управление цветами - создание: все кроме пользователей, редактирование: админ и менеджер
+  canCreateColors: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
+  canEditColors: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  
+  // Управление заказами - админ и менеджер
+  canManageOrders: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  
+  // Управление компаниями - админ и менеджер
+  canManageCompanies: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId)
 };
 
 /**
