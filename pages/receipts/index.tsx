@@ -158,7 +158,7 @@ const ReceiptsPage: NextPage = () => {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Поступления</h1>
         <div className="flex items-center gap-2">
-          {user?.role_id === 3 && (
+          {user?.role_id === 2 && (
             <Link href="/receipts/new" className="btn text-xs flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
               Создать
