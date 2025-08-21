@@ -172,10 +172,6 @@ const NewColorPage: NextPage = () => {
 
       showToast('Цвет успешно создан', 'success');
       router.push('/colors');
-      // Принудительно перезагружаем страницу для обновления данных
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (err: any) {
       console.error(err);
       showToast(err.message, 'error');

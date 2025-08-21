@@ -76,10 +76,6 @@ const NewBrandPage: NextPage = () => {
 
       showToast('Бренд создан', 'success');
       router.push('/brands');
-      // Принудительно перезагружаем страницу для обновления данных
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {

@@ -315,13 +315,7 @@ export default function NewProduct() {
           await uploadNewImages(productId);
         }
         
-        setTimeout(() => {
-          router.push('/products');
-          // Принудительно перезагружаем страницу для обновления данных
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
-        }, 1000);
+        router.push('/products');
       } else {
         const errorData = await response.json();
         if (errorData.details && Array.isArray(errorData.details)) {

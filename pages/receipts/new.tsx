@@ -374,12 +374,7 @@ const NewReceiptPage: NextPage = () => {
       if (!response.ok) throw new Error(data.error);
 
       showToast('Поступление создано успешно', 'success');
-      // Перезагружаем страницу списка поступлений для обновления данных
       router.push('/receipts');
-      // Принудительно перезагружаем страницу через 1 секунду
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (error: any) {
       showToast(translateSupabaseError(error), 'error');
     } finally {

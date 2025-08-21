@@ -219,10 +219,6 @@ const ColorModal: React.FC<ColorModalProps> = ({ isOpen, onClose, onSuccess, col
       setFormData({ name: '', hex_code: '#000000' });
       onSuccess();
       onClose();
-      // Принудительно перезагружаем страницу для обновления данных
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (error: any) {
       console.error(`Ошибка ${isEditing ? 'обновления' : 'создания'} цвета:`, error);
       showToast(error.message || `Ошибка ${isEditing ? 'обновления' : 'создания'} цвета`, 'error');
@@ -258,10 +254,6 @@ const ColorModal: React.FC<ColorModalProps> = ({ isOpen, onClose, onSuccess, col
       showToast('Цвет удален успешно', 'success');
       onSuccess();
       onClose();
-      // Принудительно перезагружаем страницу для обновления данных
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (error: any) {
       console.error('Ошибка удаления цвета:', error);
       showToast(error.message || 'Ошибка удаления цвета', 'error');

@@ -343,12 +343,7 @@ const NewRealizationPage = () => {
       if (!response.ok) throw new Error(data.error);
       
       showToast('Реализация создана успешно', 'success');
-      // Перезагружаем страницу списка реализаций для обновления данных
       router.push('/realization');
-      // Принудительно перезагружаем страницу через 1 секунду
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (e: any) {
       console.error('Ошибка создания реализации:', e);
       showToast(e.message || 'Ошибка создания реализации', 'error');

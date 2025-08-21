@@ -324,13 +324,7 @@ const EditProduct: NextPage = () => {
           await uploadNewImages(result.id);
         }
         
-        setTimeout(() => {
-          router.push('/products');
-          // Принудительно перезагружаем страницу для обновления данных
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
-        }, 1000);
+        router.push('/products');
       } else {
         const errorData = await response.json();
         console.error('Ошибка сервера:', errorData); // Отладка ошибок
@@ -372,10 +366,6 @@ const EditProduct: NextPage = () => {
       if (response.ok) {
         showToast('Товар успешно удален', 'success');
         router.push('/products');
-        // Принудительно перезагружаем страницу для обновления данных
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
       } else {
         const errorData = await response.json();
         showToast(errorData.error || 'Ошибка удаления товара', 'error');

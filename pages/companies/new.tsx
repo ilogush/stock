@@ -79,10 +79,6 @@ const NewCompanyPage: NextPage = () => {
 
       showToast('Компания создана', 'success');
       router.push('/companies');
-      // Принудительно перезагружаем страницу для обновления данных
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
