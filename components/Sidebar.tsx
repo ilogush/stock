@@ -131,7 +131,7 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
       ];
     }
 
-    // Менеджер - все как админ, кроме "Действия", "Пользователи" и "Бренды"
+    // Менеджер - все как админ, кроме "Действия", "Пользователи", "Бренды" и "Компании"
     if (userRole === 'manager') {
       return [
         { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
@@ -140,7 +140,6 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
         { href: '/realization', label: 'Реализация', icon: TruckIcon },
         { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon },
-        { href: '/companies', label: 'Компании', icon: BuildingOffice2Icon },
         { href: '/colors', label: 'Цвета', icon: SwatchIcon },
         { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined }
       ];

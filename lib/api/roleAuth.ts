@@ -83,8 +83,8 @@ export const RoleChecks = {
   // Управление заказами - админ и менеджер
   canManageOrders: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
   
-  // Управление компаниями - админ и менеджер
-  canManageCompanies: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId)
+  // Управление компаниями - только админ
+  canManageCompanies: (roleId: number) => roleId === ROLES.ADMIN
 };
 
 /**
