@@ -140,6 +140,13 @@ const NewRealizationPage = () => {
     s.color_id === currentItem.color_id
   )?.qty || 0;
 
+  // Автоматически устанавливаем количество товара на складе при выборе всех параметров
+  useEffect(() => {
+    if (currentItem.product_id && currentItem.size_code && currentItem.color_id && maxQty > 0) {
+      setCurrentItem(prev => ({ ...prev, qty: maxQty }));
+    }
+  }, [currentItem.product_id, currentItem.size_code, currentItem.color_id, maxQty]);
+
   const addItem = () => {
     if (!currentItem.product_id || !currentItem.size_code || !currentItem.color_id || currentItem.qty <= 0) {
       showToast('Заполните все поля позиции', 'error');
@@ -544,7 +551,12 @@ const NewRealizationPage = () => {
 
             {/* Количество */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Количество *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Количество * 
+                {maxQty > 0 && (
+                  <span className="text-xs text-gray-500 ml-2">(на складе: {maxQty})</span>
+                )}
+              </label>
               <input
                 type="number"
                 value={currentItem.qty || ''}
@@ -552,6 +564,8 @@ const NewRealizationPage = () => {
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
                 required
                 disabled={!currentItem.product_id || !currentItem.size_code || !currentItem.color_id}
+                max={maxQty}
+                placeholder={maxQty > 0 ? `Максимум: ${maxQty}` : ''}
               />
             </div>
           </div>
