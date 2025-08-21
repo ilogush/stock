@@ -61,8 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 2. Ищем товары по бренду
         const { data: brandProducts } = await supabaseAdmin
           .from('products')
-          .select('id')
-          .or(`brand:brands(name).ilike.%${searchTerm}%`);
+          .select('id, brand:brands(name)')
+          .ilike('brand.name', `%${searchTerm}%`);
         
         const brandProductIds = (brandProducts || []).map((p: any) => p.id);
         searchProductIds = [...new Set([...searchProductIds, ...brandProductIds])];
