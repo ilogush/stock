@@ -34,8 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Получаем дополнительную информацию о товарах и цветах
-      const productIds = [...new Set(itemsRows.map((item: any) => item.product_id))];
-      const colorIds = [...new Set(itemsRows.map((item: any) => item.color_id).filter(Boolean))];
+      const productIds = Array.from(new Set(itemsRows.map((item: any) => item.product_id)));
+      const colorIds = Array.from(new Set(itemsRows.map((item: any) => item.color_id).filter(Boolean)));
 
       // Загружаем товары
       let productsMap: Record<string, any> = {};

@@ -90,10 +90,7 @@ export default function PageHeader({
               className={`btn text-xs flex items-center gap-2 disabled:opacity-50 ${action.label.includes('Печать') ? 'hidden sm:flex' : ''}`}
             >
               {action.icon ? (
-                <>
-                  {action.icon}
-                  <PlusIcon className="w-4 h-4" />
-                </>
+                action.icon
               ) : (
                 <>
                   {action.label.includes('Сохранить') || action.label.includes('Отправить') ? null : <PlusIcon className="w-4 h-4" />}

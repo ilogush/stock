@@ -54,14 +54,12 @@ const ColorModal: React.FC<ColorModalProps> = ({ isOpen, onClose, onSuccess, col
       'лоза': '#228B22',
       
       // Дополнительные цвета и вариации
-      'Розовый': '#FFC0CB',
       'Розово': '#FFC0CB',
       'Розов': '#FFC0CB',
       'Зайчики на розовом': '#FFB6C1',
       'Зайчики': '#FFB6C1',
       'Розовое': '#FFC0CB',
       'Розовая': '#FFC0CB',
-      'Розовый': '#FFC0CB',
       
       // Оттенки розового
       'Светло-розовый': '#FFB6C1',

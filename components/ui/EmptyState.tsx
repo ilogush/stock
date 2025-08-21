@@ -1,5 +1,12 @@
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { 
+  DocumentTextIcon, 
+  MagnifyingGlassIcon, 
+  ExclamationTriangleIcon, 
+  CheckCircleIcon, 
+  ArrowPathIcon 
+} from '@heroicons/react/24/outline';
 
 /**
  * Компонент для отображения пустого состояния
@@ -129,39 +136,19 @@ EmptyState.displayName = 'EmptyState';
 // Предустановленные иконки
 export const EmptyStateIcons = {
   // Иконка для пустого списка
-  List: () => (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-    </svg>
-  ),
+  List: () => <DocumentTextIcon className="w-12 h-12" />,
   
   // Иконка для пустого поиска
-  Search: () => (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  ),
+  Search: () => <MagnifyingGlassIcon className="w-12 h-12" />,
   
   // Иконка для ошибки
-  Error: () => (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-    </svg>
-  ),
+  Error: () => <ExclamationTriangleIcon className="w-12 h-12" />,
   
   // Иконка для успеха
-  Success: () => (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
+  Success: () => <CheckCircleIcon className="w-12 h-12" />,
   
   // Иконка для загрузки
-  Loading: () => (
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-  ),
+  Loading: () => <ArrowPathIcon className="w-12 h-12" />,
 };
 
 export { EmptyState, emptyStateVariants };

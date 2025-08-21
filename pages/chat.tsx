@@ -286,11 +286,7 @@ export default function Chat() {
 
                           {/* Время и статус */}
                           <div className={`flex items-center mt-1 space-x-2 ${message.is_current_user ? 'flex-row-reverse space-x-reverse' : ''}`}>
-                            <p
-                              className={`text-xs ${
-                                message.is_current_user ? 'text-blue-400' : 'text-gray-500'
-                              }`}
-                            >
+                            <p className="text-xs text-gray-600">
                               {formatTime(message.timestamp)}
                             </p>
                             {message.is_edited && (

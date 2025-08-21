@@ -134,99 +134,51 @@ const Dashboard: NextPage = () => {
   }, [user]);
 
   const loadStats = async () => {
-      if (userRole === 'storekeeper') {
-        // Статистика для кладовщика (актуальные данные)
-        try {
-          const ts = Date.now();
-          const [warehouseRes, userStatsRes] = await Promise.all([
-            fetch(`/api/stock/monthly-summary?t=${ts}`),
-            fetch(`/api/users/user-stats?user_id=${user?.id}&t=${ts}`)
-          ]);
-          
-          const warehouseData = warehouseRes.ok ? await warehouseRes.json() : {};
-          const userStatsData = userStatsRes.ok ? await userStatsRes.json() : {};
+    try {
+      const ts = Date.now();
+      const [usersRes, onlineRes, summaryRes, userStatsRes] = await Promise.all([
+        fetch('/api/users?limit=1'),
+        fetch('/api/users/online-count'),
+        fetch(`/api/stock/monthly-summary?t=${ts}`),
+        fetch(`/api/users/user-stats?user_id=${user?.id}&t=${ts}`)
+      ]);
 
-          setStats([
-            {
-              label: 'Заказы',
-              value: warehouseData.ordersProcessed || 0,
-              note: 'за месяц',
-              icon: <ShoppingCartIcon className="w-8 h-8 text-gray-400" />
-            },
-            {
-              label: 'Поступления',
-              value: userStatsData.receipts || 0,
-              note: 'за месяц',
-              icon: <ArchiveBoxArrowDownIcon className="w-8 h-8 text-gray-400" />
-            },
-            {
-              label: 'Реализация',
-              value: userStatsData.realization || 0,
-              note: 'за месяц',
-              icon: <TruckIcon className="w-8 h-8 text-gray-400" />
-            },
-            {
-              label: 'Склад',
-              value: warehouseData.totalInStock || 0,
-              note: 'на складе',
-              icon: <ArchiveBoxIcon className="w-8 h-8 text-gray-400" />
-            }
-          ]);
-        } catch (error) {
-          console.error('Ошибка загрузки статистики склада:', error);
-          setStats([
-            { label: 'Заказы', value: 0, note: 'за месяц', icon: <ShoppingCartIcon className="w-8 h-8 text-gray-400" /> },
-            { label: 'Поступления', value: 0, note: 'за месяц', icon: <ArchiveBoxArrowDownIcon className="w-8 h-8 text-gray-400" /> },
-            { label: 'Реализация', value: 0, note: 'за месяц', icon: <TruckIcon className="w-8 h-8 text-gray-400" /> },
-            { label: 'Склад', value: 0, note: 'на складе', icon: <ArchiveBoxIcon className="w-8 h-8 text-gray-400" /> }
-          ]);
-        }
-      } else {
-        try {
-          const ts = Date.now();
-          const [usersRes, onlineRes, summaryRes, userStatsRes] = await Promise.all([
-            fetch('/api/users?limit=1'),
-            fetch('/api/users/online-count'),
-            fetch(`/api/stock/monthly-summary?t=${ts}`),
-            fetch(`/api/users/user-stats?user_id=${user?.id}&t=${ts}`)
-          ]);
+      const usersData = usersRes.ok ? await usersRes.json() : { pagination: { total: 0 } };
+      const onlineData = onlineRes.ok ? await onlineRes.json() : { online: 0 };
+      const summary = summaryRes.ok ? await summaryRes.json() : {};
+      const userStatsData = userStatsRes.ok ? await userStatsRes.json() : {};
 
-          const usersData = usersRes.ok ? await usersRes.json() : { pagination: { total: 0 } };
-          const onlineData = onlineRes.ok ? await onlineRes.json() : { online: 0 };
-          const summary = summaryRes.ok ? await summaryRes.json() : {};
-          const userStatsData = userStatsRes.ok ? await userStatsRes.json() : {};
+      const totalUsers = usersData.pagination?.total || 0;
+      const onlineUsers = onlineData.online || 0;
 
-          const totalUsers = usersData.pagination?.total || 0;
-          const onlineUsers = onlineData.online || 0;
-
-          setStats([
-            {
-              label: 'Пользователи',
-              value: `${totalUsers}/${onlineUsers}`,
-              note: 'онлайн',
-              icon: <UsersIcon className="w-8 h-8 text-gray-400" />
-            },
-            {
-              label: 'Поступления',
-              value: userStatsData.receipts || 0,
-              note: 'за месяц',
-              icon: <ArchiveBoxArrowDownIcon className="w-8 h-8 text-gray-400" />
-            },
-            {
-              label: 'Реализация',
-              value: userStatsData.realization || 0,
-              note: 'за месяц',
-              icon: <TruckIcon className="w-8 h-8 text-gray-400" />
-            },
-            {
-              label: 'Всего товаров',
-              value: summary.totalInStock || 0,
-              note: 'на складе',
-              icon: <ArchiveBoxIcon className="w-8 h-8 text-gray-400" />
-            },
-            { label: 'Заказы', value: `${ordersStats.new}/${ordersStats.processed}`, note: 'новые/обработанные', icon: <ShoppingCartIcon className="w-8 h-8 text-gray-400" /> },
-            { label: 'Продажи', value: '₽ 0', diff: '+0% за месяц', icon: <CurrencyDollarIcon className="w-8 h-8 text-gray-400" /> }
-          ]);
+      setStats([
+        {
+          label: 'Пользователи',
+          value: `${totalUsers}/${onlineUsers}`,
+          note: 'онлайн',
+          icon: <UsersIcon className="w-8 h-8 text-gray-400" />
+        },
+        {
+          label: 'Поступления',
+          value: userStatsData.receipts || 0,
+          note: 'за месяц',
+          icon: <ArchiveBoxArrowDownIcon className="w-8 h-8 text-gray-400" />
+        },
+        {
+          label: 'Реализация',
+          value: userStatsData.realization || 0,
+          note: 'за месяц',
+          icon: <TruckIcon className="w-8 h-8 text-gray-400" />
+        },
+        {
+          label: 'Всего товаров',
+          value: summary.totalInStock || 0,
+          note: 'на складе',
+          icon: <ArchiveBoxIcon className="w-8 h-8 text-gray-400" />
+        },
+        { label: 'Заказы', value: `${ordersStats.new}/${ordersStats.processed}`, note: 'новые/обработанные', icon: <ShoppingCartIcon className="w-8 h-8 text-gray-400" /> },
+        { label: 'Продажи', value: '₽ 0', diff: '+0% за месяц', icon: <CurrencyDollarIcon className="w-8 h-8 text-gray-400" /> }
+      ]);
         } catch (err) {
           console.error('Ошибка загрузки статистики:', err);
           setStats([
@@ -238,8 +190,7 @@ const Dashboard: NextPage = () => {
             { label: 'Продажи', value: '₽ 0', diff: '+0% за месяц', icon: <CurrencyDollarIcon className="w-8 h-8 text-gray-400" /> }
           ]);
         }
-      }
-    };
+      };
 
   useEffect(() => {
     // Загружаем статистику
@@ -313,15 +264,14 @@ const Dashboard: NextPage = () => {
     loadOrdersStats();
     loadBrandsSummary();
     
-    // Автоматическое обновление задач и статистики каждые 5 минут для админа
+    // Автоматическое обновление задач и статистики каждые 5 минут для всех
     let tasksInterval: NodeJS.Timeout | undefined;
     let statsInterval: NodeJS.Timeout | undefined;
-    if (userRole === 'admin') {
-      tasksInterval = setInterval(() => {
-        loadTasks();
-        loadOrdersStats();
-      }, 300000); // 5 минут (300 секунд)
-    }
+    
+    tasksInterval = setInterval(() => {
+      loadTasks();
+      loadOrdersStats();
+    }, 300000); // 5 минут (300 секунд)
     
     // eslint-disable-next-line
     return () => {
@@ -373,7 +323,6 @@ const Dashboard: NextPage = () => {
   };
 
   const loadBrandsSummary = async () => {
-    if (userRole !== 'brand_manager') return;
     
     try {
       const res = await fetch('/api/brands');
@@ -455,7 +404,7 @@ const Dashboard: NextPage = () => {
   };
 
   // --- Пагинация для таблицы задач ---
-  const filteredTasks = tasks.filter(t=> {
+  const filteredTasks = tasks.filter((t: any) => {
     if (taskTab==='current') return (t.status!=='completed' && t.status!=='done') && t.assignee_id===user?.id;
     if (taskTab==='closed') return (t.status==='completed' || t.status==='done') && t.assignee_id===user?.id;
     if (taskTab==='created') return t.author_id===user?.id;
@@ -504,7 +453,7 @@ const Dashboard: NextPage = () => {
   return (
     <>
       {/* Статистика */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${userRole === 'storekeeper' ? 'lg:grid-cols-4 xl:grid-cols-4' : 'xl:grid-cols-6'} gap-4 mb-8`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
         {stats.map((s) => {
           const cardLink = getCardLink(s.label);
           
@@ -546,12 +495,9 @@ const Dashboard: NextPage = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-medium text-gray-800">Задания</h3>
-            {userRole === 'admin' && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-
-              </div>
-            )}
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            </div>
           </div>
           <button
             onClick={() => setShowTaskModal(true)}
@@ -570,7 +516,7 @@ const Dashboard: NextPage = () => {
             {key:'current',label:'Текущие'},
             {key:'closed',label:'Выполненные'},
             {key:'created',label:'Созданные'}
-          ].map(t=> (
+          ].map((t: any) => (
             <button key={t.key} onClick={()=>{setTaskTab(t.key as any); setTaskPage(1);}} className={`px-3 py-1 rounded-full border ${taskTab===t.key?'bg-gray-800 text-white':'bg-gray-100 text-gray-800'}`}>{t.label}</button>
           ))}
         </div>
@@ -612,7 +558,7 @@ const Dashboard: NextPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pagedTasks.map((t, index) => {
+                  {pagedTasks.map((t: any, index: number) => {
                     // Специальное отображение для уведомлений бренд-менеджера
                     if (t.is_notification) {
                       const notificationIcon = t.notification_type === 'error' ? '🔴' : t.notification_type === 'warning' ? '🟡' : '🔵';
@@ -710,8 +656,8 @@ const Dashboard: NextPage = () => {
             </div>
           )}
           
-          {/* Информация о брендах для бренд-менеджера */}
-          {userRole === 'brand_manager' && brands.length > 0 && (
+          {/* Информация о брендах */}
+          {brands.length > 0 && (
             <div className="mt-8">
               <h4 className="text-md font-medium text-gray-800 mb-4">Ваши бренды</h4>
               <div className="overflow-x-auto">

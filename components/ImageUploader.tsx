@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useToast } from './ToastContext';
+import { XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 interface UploadedImage {
   id?: string;
   url: string;
@@ -144,9 +145,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
               title="Удалить изображение"
               disabled={processing}
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <XMarkIcon className="w-3 h-3" />
             </button>
             
             {/* Номер изображения */}
@@ -172,9 +171,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                 <p className="text-sm text-gray-500 mt-2">Обработка...</p>
               </div>
             )}
-            <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <PlusIcon className="w-6 h-6 mb-1" />
             <span className="text-xs">Добавить</span>
             <input
               ref={fileInputRef}

@@ -4,8 +4,8 @@ import { createListResponse } from '../../../lib/api/standardResponse';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 
 export default withPermissions(
-  RoleChecks.canManageBrands,
-  'Доступ к брендам разрешен только администраторам'
+  RoleChecks.canViewBrands,
+  'Доступ к брендам разрешен только администраторам, менеджерам и кладовщикам'
 )(async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {

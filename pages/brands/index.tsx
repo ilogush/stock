@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, EyeIcon, PlusIcon, PrinterIcon, TagIcon } from '@heroicons/react/24/outline';
 import Paginator from '../../components/Paginator';
 import { useToast } from '../../components/ToastContext';
 import { useDebouncedCallback } from '../../lib/hooks/useDebounce';
@@ -138,19 +138,7 @@ const BrandsPage: NextPage = () => {
             className="btn text-xs flex items-center hidden sm:flex"
             title="Печать списка"
           >
-            <svg 
-              className="w-4 h-4" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" 
-              />
-            </svg>
+            <PrinterIcon className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -217,9 +205,7 @@ const BrandsPage: NextPage = () => {
                 <tr className="border-t border-b border-gray-200">
                   <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center space-y-2">
-                      <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
+                      <TagIcon className="w-12 h-12 text-gray-300" />
                       <div className="text-lg font-medium">
                         Брендов нет
                       </div>

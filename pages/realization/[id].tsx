@@ -161,7 +161,7 @@ const RealizationDetailPage: NextPage = () => {
                     <td className="px-3 py-2 text-sm text-gray-900">{item.category_name}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.size_name}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.color_name}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-center">{Number(item.qty) || 0}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 text-center">{Number(item.quantity) || 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -173,7 +173,7 @@ const RealizationDetailPage: NextPage = () => {
             <div>
               <span className="text-gray-500">Общее количество: </span>
               <span className="font-medium">
-                {realization.items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0)} шт.
+                {realization.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)} шт.
               </span>
             </div>
           </div>

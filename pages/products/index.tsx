@@ -8,7 +8,7 @@ import Paginator from '../../components/Paginator';
 
 import { useDebouncedCallback, useApiCache, usePrefetch } from '../../lib/hooks';
 import { useUserRole } from '../../lib/hooks/useUserRole';
-import { PencilIcon, TrashIcon, EyeIcon, PlusIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, EyeIcon, PlusIcon, PhotoIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import { TableSuspense } from '../../components/SuspenseWrapper';
 
 
@@ -143,34 +143,25 @@ const ProductsPage: NextPage = () => {
     fetchProducts(1, pagination.limit, currentCategory, searchQuery);
   }, [pagination.limit]);
 
-  // Основной useEffect для загрузки данных - срабатывает только при изменении категории или поиска
-  useEffect(() => {
-    if (!isInitialized) return; // Не загружаем данные до инициализации
-    
-    // Получаем поисковый запрос из URL при загрузке страницы
-    const urlSearchQuery = router.query.search as string;
-    if (urlSearchQuery) {
-      setSearchQuery(urlSearchQuery);
-    }
-    
-    // Загружаем данные только при изменении категории или поиска, НЕ при изменении страницы
-    fetchProducts(1, pagination.limit, currentCategory, urlSearchQuery || '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCategory, isInitialized]);
-
-  // Обработка изменений поиска из URL (только при изменении поиска, не страницы)
+  // Инициализация и загрузка данных
   useEffect(() => {
     if (!isInitialized) return;
     
+    // Получаем параметры из URL
     const urlSearchQuery = router.query.search as string;
-    const urlPage = router.query.page as string;
+    const urlCategory = router.query.category as string;
     
-    // Обновляем поиск только если изменился поиск, а не страница
-    if (urlSearchQuery !== searchQuery && !urlPage) {
-      setSearchQuery(urlSearchQuery || '');
-      fetchProducts(1, pagination.limit, currentCategory, urlSearchQuery || '');
+    // Обновляем состояние из URL
+    if (urlSearchQuery !== undefined) {
+      setSearchQuery(urlSearchQuery);
     }
-  }, [router.query.search, isInitialized, searchQuery, pagination.limit, currentCategory]);
+    if (urlCategory !== undefined) {
+      setCurrentCategory(urlCategory);
+    }
+    
+    // Загружаем данные
+    fetchProducts(1, pagination.limit, urlCategory || currentCategory, urlSearchQuery || searchQuery);
+  }, [isInitialized, router.query.search, router.query.category]);
 
   // Дебаунс поиска
   const debouncedFetch = useDebouncedCallback((q: string) => {
@@ -179,13 +170,13 @@ const ProductsPage: NextPage = () => {
     if (q && q.trim()) query.search = q.trim();
     router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
     fetchProducts(1, pagination.limit, currentCategory, q);
-  }, 500);
+  }, 300);
 
+  // Обработка изменений поиска
   useEffect(() => {
     if (!isInitialized) return;
     debouncedFetch(searchQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery]);
+  }, [searchQuery, isInitialized]);
 
   // Убираем автоматическое обновление при возврате на страницу - это создает лишние запросы
 
@@ -263,19 +254,7 @@ const ProductsPage: NextPage = () => {
             className="btn text-xs flex items-center hidden sm:flex"
             title="Печать списка"
           >
-            <svg 
-              className="w-4 h-4" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" 
-              />
-            </svg>
+            <PrinterIcon className="w-4 h-4" />
           </button>
         </div>
       </div>

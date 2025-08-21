@@ -27,6 +27,7 @@ export const ROLES = {
   ADMIN: 1,          // Администратор - полный доступ
   MANAGER: 4,        // Менеджер - все как админ, кроме "Действия" и "Пользователи"
   STOREKEEPER: 2,    // Кладовщик - просмотр поступлений/реализации, создание цветов
+  DIRECTOR: 5,       // Директор - полный доступ как у админа
   USER: 8            // Пользователь - базовый доступ (только дашборд, профиль, чат)
 } as const;
 
@@ -51,6 +52,9 @@ export const RoleChecks = {
   
   // Управление брендами - только админ
   canManageBrands: (roleId: number) => roleId === ROLES.ADMIN,
+  
+  // Просмотр брендов - админ, менеджер, кладовщик
+  canViewBrands: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
   
   // Управление пользователями - только админ
   canManageUsers: (roleId: number) => roleId === ROLES.ADMIN,
@@ -84,7 +88,10 @@ export const RoleChecks = {
   canManageOrders: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
   
   // Управление компаниями - только админ
-  canManageCompanies: (roleId: number) => roleId === ROLES.ADMIN
+  canManageCompanies: (roleId: number) => roleId === ROLES.ADMIN,
+  
+  // Управление производством - админ и менеджер
+  canManageProduction: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId)
 };
 
 /**
