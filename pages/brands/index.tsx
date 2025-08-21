@@ -116,7 +116,7 @@ const BrandsPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200 no-print">
         <h1 className="text-xl font-bold text-gray-800">Бренды</h1>
         <div className="flex items-center gap-3">
           {/* Поиск справа от заголовка */}
@@ -143,17 +143,7 @@ const BrandsPage: NextPage = () => {
         </div>
       </div>
 
-      {/* Состояние загрузки */}
-      {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-          </div>
-          <span className="ml-2 text-gray-600">Загрузка брендов...</span>
-        </div>
-      ) : (
+      {/* Таблица брендов */}
         <div className="flex flex-col">
           <div className="overflow-x-auto">
             <table className="table-standard">
@@ -229,7 +219,6 @@ const BrandsPage: NextPage = () => {
           />
         )}
         </div>
-      )}
 
       <style jsx>{`
       `}</style>

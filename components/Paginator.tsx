@@ -35,7 +35,7 @@ const Paginator: React.FC<PaginatorProps> = ({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 border-t border-gray-200 paginator-component">
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 py-4 border-t border-gray-200 paginator-component no-print">
       {/* Информация о страницах */}
       <div className="flex items-center space-x-2 text-sm text-gray-600 pagination-info">
         <span>Показать</span>

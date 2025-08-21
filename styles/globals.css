@@ -100,8 +100,72 @@
   
   /* Оптимизация для печати */
   @media print {
-    .no-print {
+    /* Скрываем все элементы интерфейса */
+    .no-print,
+    button,
+    .btn,
+    .search-input,
+    nav,
+    header,
+    footer,
+    .sidebar,
+    .topbar,
+    .pagination,
+    .paginator {
       display: none !important;
+    }
+    
+    /* Показываем только таблицы и их содержимое */
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+    
+    th, td {
+      border: 1px solid #000 !important;
+      padding: 8px !important;
+      text-align: left !important;
+    }
+    
+    th {
+      background-color: #f3f4f6 !important;
+      font-weight: bold !important;
+    }
+    
+    /* Убираем все эффекты и анимации */
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+    
+    /* Устанавливаем черно-белую печать */
+    * {
+      color: #000 !important;
+      background: #fff !important;
+    }
+    
+    /* Убираем тени и границы */
+    .shadow,
+    .border,
+    .rounded {
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+    }
+    
+    /* Скрываем иконки и изображения */
+    svg,
+    img {
+      display: none !important;
+    }
+    
+    /* Убираем отступы у контейнеров */
+    .container,
+    .mx-auto,
+    .px-4,
+    .py-4 {
+      margin: 0 !important;
+      padding: 0 !important;
     }
   }
 } 

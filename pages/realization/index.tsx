@@ -154,9 +154,21 @@ const RealizationPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b border-gray-200 no-print">
         <h1 className="text-xl font-bold text-gray-800">Реализация</h1>
         <div className="flex items-center gap-2">
+          {/* Поиск - только в десктопной версии */}
+          <div className="hidden md:block">
+            <div className="relative w-64">
+              <input
+                type="text"
+                placeholder="Поиск реализаций..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="search-input block w-full"
+              />
+            </div>
+          </div>
           {user?.role_id === 2 && (
             <Link href="/realization/new" className="btn text-xs flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
@@ -170,19 +182,6 @@ const RealizationPage: NextPage = () => {
           >
             <PrinterIcon className="w-4 h-4" />
           </button>
-        </div>
-      </div>
-
-      {/* Поиск */}
-      <div className="mb-4">
-        <div className="relative w-full sm:w-64">
-          <input
-            type="text"
-            placeholder="Поиск реализаций..."
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="search-input block w-full"
-          />
         </div>
       </div>
 
