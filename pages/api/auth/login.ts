@@ -21,12 +21,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Пароль обязателен' });
       }
       
+      let user;
+      
       // Ищем пользователя только по паролю
       const result = await supabase
         .from('users')
-        .select('*')
-        .not('is_blocked', 'eq', true)
-        .not('is_deleted', 'eq', true);
+        .select('*');
       
       if (result.data && result.data.length > 0) {
         // Проверяем пароль для каждого пользователя
@@ -49,60 +49,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else {
       // Обычная логика поиска по email или username
 
-    // Проверяем минимальную длину пароля
-    if (password.length < 4) {
-      return res.status(400).json({ error: 'Пароль должен содержать минимум 4 символа' });
-    }
-
-    let user;
-    let error;
-
-    // Пытаемся найти пользователя по email или имени
-    if (email) {
-      const result = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .single();
-      user = result.data;
-      error = result.error;
-        } else if (username) {
-      // Ищем всех пользователей с таким именем или фамилией
-      let result = await supabase
-        .from('users')
-        .select('*')
-        .or(`first_name.eq.${username},last_name.eq.${username},first_name.ilike.%${username}%,last_name.ilike.%${username}%`);
-      
-      if (result.data && result.data.length > 0) {
-        // Если найдено несколько пользователей, проверяем пароль для каждого
-        if (result.data.length > 1) {
-          for (const candidateUser of result.data) {
-            if (candidateUser.is_blocked || candidateUser.is_deleted) {
-              continue; // Пропускаем заблокированных и удаленных
-            }
-            
-            const isValidPassword = await verifyPassword(password, candidateUser.password_hash);
-            
-            if (isValidPassword) {
-              user = candidateUser;
-              user.password_verified = true; // Отмечаем, что пароль уже проверен
-              break;
-            }
-          }
-          
-          if (!user) {
-            error = { message: 'Неверный пароль' };
-          }
-        } else {
-          // Если найден только один пользователь
-          user = result.data[0];
-        }
-        error = null;
-      } else {
-        user = null;
-        error = result.error || { message: 'Пользователь не найден' };
+      // Проверяем минимальную длину пароля
+      if (password.length < 4) {
+        return res.status(400).json({ error: 'Пароль должен содержать минимум 4 символа' });
       }
-    }
+
+      let user;
+      let error;
+
+      // Пытаемся найти пользователя по email или имени
+      if (email) {
+        const result = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email.toLowerCase())
+          .single();
+        user = result.data;
+        error = result.error;
+      } else if (username) {
+        // Ищем всех пользователей с таким именем или фамилией
+        let result = await supabase
+          .from('users')
+          .select('*')
+          .or(`first_name.eq.${username},last_name.eq.${username},first_name.ilike.%${username}%,last_name.ilike.%${username}%`);
+        
+        if (result.data && result.data.length > 0) {
+          // Если найдено несколько пользователей, проверяем пароль для каждого
+          if (result.data.length > 1) {
+            for (const candidateUser of result.data) {
+              if (candidateUser.is_blocked || candidateUser.is_deleted) {
+                continue; // Пропускаем заблокированных и удаленных
+              }
+              
+              const isValidPassword = await verifyPassword(password, candidateUser.password_hash);
+              
+              if (isValidPassword) {
+                user = candidateUser;
+                user.password_verified = true; // Отмечаем, что пароль уже проверен
+                break;
+              }
+            }
+            
+            if (!user) {
+              error = { message: 'Неверный пароль' };
+            }
+          } else {
+            // Если найден только один пользователь
+            user = result.data[0];
+          }
+          error = null;
+        } else {
+          user = null;
+          error = result.error || { message: 'Пользователь не найден' };
+        }
+      }
     }
 
     if (error || !user) {
