@@ -44,11 +44,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         query = query.eq('product.brand_id', brand_id);
       }
 
-      // Добавляем поиск по названию товара или артикулу
+      // Добавляем поиск по бренду, артикулу, названию и цвету
       let searchProductIds: number[] = [];
+      let searchColorIds: number[] = [];
       if (search && search.trim()) {
         const searchTerm = search.trim().toLowerCase();
-        // Ищем товары по названию или артикулу
+        
+        // 1. Ищем товары по названию или артикулу
         const { data: searchProducts } = await supabaseAdmin
           .from('products')
           .select('id')
@@ -56,10 +58,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         searchProductIds = (searchProducts || []).map((p: any) => p.id);
         
-        if (searchProductIds.length > 0) {
-          query = query.in('product_id', searchProductIds);
+        // 2. Ищем товары по бренду
+        const { data: brandProducts } = await supabaseAdmin
+          .from('products')
+          .select('id')
+          .or(`brand:brands(name).ilike.%${searchTerm}%`);
+        
+        const brandProductIds = (brandProducts || []).map((p: any) => p.id);
+        searchProductIds = [...new Set([...searchProductIds, ...brandProductIds])];
+        
+        // 3. Ищем цвета по названию
+        const { data: searchColors } = await supabaseAdmin
+          .from('colors')
+          .select('id')
+          .ilike('name', `%${searchTerm}%`);
+        
+        searchColorIds = (searchColors || []).map((c: any) => c.id);
+        
+        // Применяем фильтры
+        if (searchProductIds.length > 0 || searchColorIds.length > 0) {
+          if (searchProductIds.length > 0) {
+            query = query.in('product_id', searchProductIds);
+          }
+          if (searchColorIds.length > 0) {
+            query = query.in('color_id', searchColorIds);
+          }
         } else {
-          // Если товары не найдены, возвращаем пустой результат
+          // Если ничего не найдено, возвращаем пустой результат
           query = query.eq('product_id', -1);
         }
       }

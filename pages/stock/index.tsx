@@ -169,7 +169,7 @@ const StockPage: NextPage = () => {
           <div className="relative w-full sm:w-64">
             <input
               type="text"
-              placeholder="Поиск товаров на складе..."
+              placeholder="Поиск по бренду, артикулу, названию, цвету..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
