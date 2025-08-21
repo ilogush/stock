@@ -13,7 +13,7 @@ interface WarehouseTask {
   date: string;
   position: string;
   quantity: number;
-  status: 'новое' | 'в работе' | 'выполнено';
+  status: 'новое' | 'просмотрено' | 'в работе' | 'выполнено';
   created_at: string;
   updated_at: string;
   description?: string;
@@ -99,6 +99,7 @@ export default function TaskDetail() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'новое': return 'bg-red-100 text-red-800';
+      case 'просмотрено': return 'bg-yellow-100 text-yellow-800';
       case 'в работе': return 'bg-blue-100 text-blue-800';
       case 'выполнено': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -134,23 +135,34 @@ export default function TaskDetail() {
   const renderActionButtons = () => {
     if (task.status === 'новое') {
       return (
-                  <button
-            onClick={() => updateStatus('в работе')}
-            className="btn"
-          >
-            Начать работу
-          </button>
+        <button
+          onClick={() => updateStatus('в работе')}
+          className="btn"
+        >
+          Начать работу
+        </button>
+      );
+    }
+    
+    if (task.status === 'просмотрено') {
+      return (
+        <button
+          onClick={() => updateStatus('в работе')}
+          className="btn"
+        >
+          Начать работу
+        </button>
       );
     }
     
     if (task.status === 'в работе') {
       return (
-                  <button
-            onClick={() => updateStatus('выполнено')}
-            className="btn"
-          >
-            Выполнено
-          </button>
+        <button
+          onClick={() => updateStatus('выполнено')}
+          className="btn"
+        >
+          Выполнено
+        </button>
       );
     }
     
