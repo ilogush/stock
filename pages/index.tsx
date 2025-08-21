@@ -685,7 +685,7 @@ const Dashboard: NextPage = () => {
                             }} 
                             className="px-2 py-0.5 rounded-full border border-gray-800 bg-gray-800 text-white text-xs hover:bg-gray-900 table-cell-mono"
                           >
-                            {String(index + 1).padStart(3, '0')}
+                            {String(t.id).padStart(3, '0')}
                           </button>
                         </td>
                         <td className="py-2 pr-4 text-gray-800">{new Date(t.created_at).toLocaleDateString()}</td>
