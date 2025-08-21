@@ -18,7 +18,7 @@ export const translateSupabaseError = (error: any): string => {
   }
   
   if (message.includes('Password should be at least')) {
-    return 'Пароль должен содержать минимум 6 символов';
+    return 'Пароль должен содержать минимум 4 символа';
   }
   
   if (message.includes('Unable to validate email address')) {

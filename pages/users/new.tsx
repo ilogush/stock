@@ -61,8 +61,8 @@ const NewUserPage: NextPage = () => {
       return;
     }
 
-    if (!password || password.length < 6) {
-      showToast('Пароль обязателен и должен быть не короче 6 символов', 'error');
+    if (!password || password.length < 4) {
+      showToast('Пароль обязателен и должен быть не короче 4 символов', 'error');
       return;
     }
 

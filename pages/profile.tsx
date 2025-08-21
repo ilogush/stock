@@ -104,9 +104,9 @@ export default function Profile() {
         if (newPassword !== confirmPassword) {
           throw new Error('Новые пароли не совпадают');
         }
-        if (newPassword.length < 6) {
-          throw new Error('Новый пароль должен содержать минимум 6 символов');
-        }
+            if (newPassword.length < 4) {
+      throw new Error('Новый пароль должен содержать минимум 4 символа');
+    }
 
         // Проверяем текущий пароль
         const loginResponse = await fetch('/api/auth/login', {

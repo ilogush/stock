@@ -56,7 +56,7 @@ export const TOAST_MESSAGES = {
     REQUIRED_FIELDS: 'Заполните все обязательные поля',
     INVALID_EMAIL: 'Неверный формат email',
     INVALID_PHONE: 'Телефон должен начинаться с +7 и содержать 10 цифр',
-    PASSWORD_TOO_SHORT: 'Пароль должен содержать минимум 6 символов',
+    PASSWORD_TOO_SHORT: 'Пароль должен содержать минимум 4 символа',
     
     // Специфичные ошибки
     CANNOT_DELETE_WITH_STOCK: 'Нельзя удалить товар, пока есть остатки на складе',
