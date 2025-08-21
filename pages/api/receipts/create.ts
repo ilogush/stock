@@ -1,11 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
-import { withWarehouseAccess, AuthenticatedRequest, logAccess } from '../../../lib/api/roleAuth';
+import { withPermissions, RoleChecks, AuthenticatedRequest, logAccess } from '../../../lib/api/roleAuth';
 import { createItemResponse, createErrorResponse } from '../../../lib/api/standardResponse';
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
 
-export default withWarehouseAccess(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+export default withPermissions(
+  RoleChecks.canCreateReceipts,
+  'Создание поступлений доступно только кладовщикам'
+)(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     const errorResponse = createErrorResponse('Метод не поддерживается');
     return res.status(405).json(errorResponse);

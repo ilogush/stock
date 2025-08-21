@@ -2,8 +2,12 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { validateStockForItems } from '../../../lib/stockValidator';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
+import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withPermissions(
+  RoleChecks.canCreateRealization,
+  'Создание реализации доступно только кладовщикам'
+)(async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Метод не поддерживается' });
 
   const { recipient_id, sender_id = 2, notes = '', items } = req.body;
@@ -151,7 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Ошибка создания реализации:', e);
     return res.status(500).json({ error: 'Ошибка создания реализации: ' + (e.message || 'Неизвестная ошибка') });
   }
-}
+});
 
 async function generateRealizationNumber(): Promise<string> {
   const { data: latest } = await supabaseAdmin

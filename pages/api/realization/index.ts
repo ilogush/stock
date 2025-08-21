@@ -1,7 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withPermissions(
+  RoleChecks.canViewRealization,
+  'Просмотр реализации доступен только администраторам, менеджерам и кладовщикам'
+)(async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
       const { page = '1', limit = '20', search } = req.query;
@@ -157,4 +161,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+});
