@@ -163,7 +163,7 @@ const StockPage: NextPage = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Stock</h1>
+        <h1 className="text-xl font-bold text-gray-800">Склад</h1>
         <div className="flex items-center gap-3">
           {/* Поиск справа от заголовка */}
           <div className="relative w-full sm:w-64">
