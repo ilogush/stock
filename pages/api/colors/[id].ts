@@ -209,7 +209,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PUT') {
     try {
-      // Проверяем права доступа - редактирование только для администраторов
+      // Проверяем права доступа - редактирование для администраторов и менеджеров
       const userId = getUserIdFromCookie(req);
       if (!userId) {
         return res.status(401).json({ error: 'Не авторизован' });
@@ -222,8 +222,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', userId)
         .single();
 
-      if (!userData || userData.role_id !== 1) { // role_id 1 = admin
-        return res.status(403).json({ error: 'Доступ запрещён. Редактирование цветов доступно только администраторам' });
+      if (!userData || ![1, 4].includes(userData.role_id)) { // role_id 1 = admin, 4 = manager
+        return res.status(403).json({ error: 'Доступ запрещён. Редактирование цветов доступно только администраторам и менеджерам' });
       }
 
       const { name, hex_code } = req.body;
@@ -298,7 +298,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'DELETE') {
     try {
-      // Проверяем права доступа - удаление только для администраторов
+      // Проверяем права доступа - удаление для администраторов и менеджеров
       const userId = getUserIdFromCookie(req);
       if (!userId) {
         return res.status(401).json({ error: 'Не авторизован' });
@@ -311,8 +311,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', userId)
         .single();
 
-      if (!userData || userData.role_id !== 1) { // role_id 1 = admin
-        return res.status(403).json({ error: 'Доступ запрещён. Удаление цветов доступно только администраторам' });
+      if (!userData || ![1, 4].includes(userData.role_id)) { // role_id 1 = admin, 4 = manager
+        return res.status(403).json({ error: 'Доступ запрещён. Удаление цветов доступно только администраторам и менеджерам' });
       }
 
       // Проверяем, используется ли цвет в товарах (products)
