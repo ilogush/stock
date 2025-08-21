@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '../../../lib/supabaseClient';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { verifyPassword } from '../../../lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -9,138 +8,91 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { email, username, password } = req.body;
-    
-    console.log('Получен запрос на вход:', { email, username, hasPassword: !!password });
+    const { password } = req.body;
 
+    // Проверяем, что пароль передан
     if (!password) {
       return res.status(400).json({ error: 'Пароль обязателен' });
     }
 
-    // Если не указан email и username, но указан пароль - ищем пользователя только по паролю
-    if (!email && !username) {
-      if (!password) {
-        return res.status(400).json({ error: 'Пароль обязателен' });
+    // Проверяем минимальную длину пароля
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Пароль должен содержать минимум 4 символа' });
+    }
+
+    console.log('Поиск пользователя по паролю...');
+
+    // Получаем всех пользователей из базы данных
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, email, first_name, last_name, phone, telegram, role_id, avatar_url, password_hash, created_at, updated_at');
+
+    if (usersError) {
+      console.error('Ошибка получения пользователей:', usersError);
+      return res.status(500).json({ error: 'Ошибка сервера' });
+    }
+
+    if (!users || users.length === 0) {
+      return res.status(401).json({ error: 'Пользователи не найдены' });
+    }
+
+    console.log(`Найдено ${users.length} пользователей`);
+
+    // Ищем пользователя с указанным паролем
+    let foundUser = null;
+
+    for (const user of users) {
+      if (!user.password_hash) {
+        continue; // Пропускаем пользователей без пароля
       }
-      
-      let user;
-      
-      // Ищем пользователя только по паролю
-      const result = await supabase
-        .from('users')
-        .select('*');
-      
-      if (result.data && result.data.length > 0) {
-        // Проверяем пароль для каждого пользователя
-        for (const candidateUser of result.data) {
-          const isValidPassword = await verifyPassword(password, candidateUser.password_hash);
-          
-          if (isValidPassword) {
-            user = candidateUser;
-            user.password_verified = true;
-            break;
-          }
-        }
+
+      try {
+        const isValidPassword = await verifyPassword(password, user.password_hash);
         
-        if (!user) {
-          return res.status(401).json({ error: 'Неверный пароль' });
+        if (isValidPassword) {
+          foundUser = user;
+          console.log(`Найден пользователь: ${user.email}`);
+          break;
         }
-      } else {
-        return res.status(401).json({ error: 'Пользователи не найдены' });
-      }
-    } else {
-      // Обычная логика поиска по email или username
-
-      // Проверяем минимальную длину пароля
-      if (password.length < 4) {
-        return res.status(400).json({ error: 'Пароль должен содержать минимум 4 символа' });
-      }
-
-      let user;
-      let error;
-
-      // Пытаемся найти пользователя по email или имени
-      if (email) {
-        const result = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', email.toLowerCase())
-          .single();
-        user = result.data;
-        error = result.error;
-      } else if (username) {
-        // Ищем всех пользователей с таким именем или фамилией
-        let result = await supabase
-          .from('users')
-          .select('*')
-          .or(`first_name.eq.${username},last_name.eq.${username},first_name.ilike.%${username}%,last_name.ilike.%${username}%`);
-        
-        if (result.data && result.data.length > 0) {
-          // Если найдено несколько пользователей, проверяем пароль для каждого
-          if (result.data.length > 1) {
-            for (const candidateUser of result.data) {
-              const isValidPassword = await verifyPassword(password, candidateUser.password_hash);
-              
-              if (isValidPassword) {
-                user = candidateUser;
-                user.password_verified = true; // Отмечаем, что пароль уже проверен
-                break;
-              }
-            }
-            
-            if (!user) {
-              error = { message: 'Неверный пароль' };
-            }
-          } else {
-            // Если найден только один пользователь
-            user = result.data[0];
-          }
-          error = null;
-        } else {
-          user = null;
-          error = result.error || { message: 'Пользователь не найден' };
-        }
+      } catch (error) {
+        console.error(`Ошибка проверки пароля для пользователя ${user.email}:`, error);
+        continue; // Пропускаем пользователя с ошибкой проверки пароля
       }
     }
 
-    if (!user) {
-      return res.status(401).json({ error: 'Неверный email или пароль' });
+    if (!foundUser) {
+      console.log('Пользователь с таким паролем не найден');
+      return res.status(401).json({ error: 'Неверный пароль' });
     }
 
-    // Проверяем, что у пользователя есть пароль
-    if (!user.password_hash) {
-      console.log('У пользователя нет пароля');
-      return res.status(401).json({ error: 'Неверный email или пароль' });
-    }
-
-    console.log('Проверяем пароль для пользователя:', user.email);
-
-    // Проверяем пароль (только если не проверяли ранее для множественных пользователей)
-    if (!user.password_verified) {
-      console.log('Пароль еще не проверен, проверяем...');
-      const isValidPassword = await verifyPassword(password, user.password_hash);
-      console.log('Результат проверки пароля:', isValidPassword);
-      if (!isValidPassword) {
-        console.log('Пароль неверный');
-        return res.status(401).json({ error: 'Неверный email или пароль' });
-      }
-      console.log('Пароль верный');
-    } else {
-      console.log('Пароль уже проверен ранее');
-    }
+    console.log('Пароль верный, устанавливаем куки...');
 
     // Устанавливаем куки с ID пользователя (24 часа)
-    // res.setHeader('Set-Cookie', `user_id=${user.id}; HttpOnly; Path=/; Max-Age=86400`);
+    res.setHeader('Set-Cookie', `user_id=${foundUser.id}; HttpOnly; Path=/; Max-Age=86400`);
 
-    // Возвращаем только ID пользователя для тестирования
+    // Возвращаем данные пользователя без пароля
+    const userResponse = {
+      id: foundUser.id,
+      email: foundUser.email,
+      first_name: foundUser.first_name,
+      last_name: foundUser.last_name,
+      phone: foundUser.phone,
+      telegram: foundUser.telegram,
+      role_id: foundUser.role_id,
+      avatar_url: foundUser.avatar_url,
+      created_at: foundUser.created_at,
+      updated_at: foundUser.updated_at
+    };
+
+    console.log('Вход выполнен успешно');
+
     return res.status(200).json({ 
-      user: { id: user.id },
+      user: userResponse,
       message: 'Успешный вход' 
     });
 
   } catch (error) {
     console.error('Ошибка при входе:', error);
-    console.error('Stack trace:', error.stack);
     return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 } 
