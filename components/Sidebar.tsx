@@ -126,8 +126,8 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
         { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
         { href: '/realization', label: 'Реализация', icon: TruckIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon }
+        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
+        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined }
       ];
     }
 
@@ -142,8 +142,8 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon },
         { href: '/brands', label: 'Бренды', icon: TagIcon },
         { href: '/companies', label: 'Компании', icon: BuildingOffice2Icon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
-        { href: '/colors', label: 'Цвета', icon: SwatchIcon }
+        { href: '/colors', label: 'Цвета', icon: SwatchIcon },
+        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined }
       ];
     }
 
@@ -159,9 +159,9 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/brands', label: 'Бренды', icon: TagIcon },
         { href: '/companies', label: 'Компании', icon: BuildingOffice2Icon },
         { href: '/actions', label: 'Действия', icon: ClockIcon },
-        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined },
         { href: '/colors', label: 'Цвета', icon: SwatchIcon },
-        { href: '/users', label: 'Пользователи', icon: UsersIcon }
+        { href: '/users', label: 'Пользователи', icon: UsersIcon },
+        { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined }
       ];
     }
 
