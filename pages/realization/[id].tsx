@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import PageHeader from '../../components/PageHeader';
 import { useToast } from '../../components/ToastContext';
 import { Realization } from '../../types';
+import { PrinterIcon } from '@heroicons/react/24/outline';
 
 interface RealizationDetail extends Realization {
   items: RealizationItem[];
@@ -92,8 +93,9 @@ const RealizationDetailPage: NextPage = () => {
         showBackButton
         backHref="/realization"
         action={{
-          label: 'Печать',
-          onClick: printDocument
+          label: '',
+          onClick: printDocument,
+          icon: <PrinterIcon className="w-4 h-4" />
         }}
       />
 
@@ -159,7 +161,7 @@ const RealizationDetailPage: NextPage = () => {
                     <td className="px-3 py-2 text-sm text-gray-900">{item.category_name}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.size_name}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.color_name}</td>
-                    <td className="px-3 py-2 text-sm text-gray-900 text-center">{item.quantity}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 text-center">{Number(item.qty) || 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -171,7 +173,7 @@ const RealizationDetailPage: NextPage = () => {
             <div>
               <span className="text-gray-500">Общее количество: </span>
               <span className="font-medium">
-                {realization.items.reduce((sum, item) => sum + item.quantity, 0)} шт.
+                {realization.items.reduce((sum, item) => sum + (Number(item.qty) || 0), 0)} шт.
               </span>
             </div>
           </div>

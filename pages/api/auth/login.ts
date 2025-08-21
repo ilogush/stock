@@ -9,18 +9,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email и пароль обязательны' });
+    if (!password) {
+      return res.status(400).json({ error: 'Пароль обязателен' });
     }
 
-    // Находим пользователя по email
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .single();
+    if (!email && !username) {
+      return res.status(400).json({ error: 'Email или имя пользователя обязательны' });
+    }
+
+    // Проверяем минимальную длину пароля
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Пароль должен содержать минимум 4 символа' });
+    }
+
+    let user;
+    let error;
+
+    // Пытаемся найти пользователя по email или имени
+    if (email) {
+      const result = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single();
+      user = result.data;
+      error = result.error;
+    } else if (username) {
+      const result = await supabase
+        .from('users')
+        .select('*')
+        .or(`first_name.ilike.%${username}%,last_name.ilike.%${username}%`)
+        .single();
+      user = result.data;
+      error = result.error;
+    }
 
     if (error || !user) {
       // Логируем неудачную попытку входа (если пользователь не найден)
@@ -31,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             user_id: 0, // Системный ID для неудачных попыток
             action_name: 'Попытка входа',
             status: 'error',
-            details: `Неудачная попытка входа с email: ${email}`,
+            details: `Неудачная попытка входа с ${email ? 'email: ' + email : 'именем: ' + username}`,
             created_at: new Date().toISOString()
           });
       } catch (logError) {

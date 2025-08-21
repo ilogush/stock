@@ -4,7 +4,7 @@ import type { NextPage } from 'next';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../components/AuthContext';
 import { TOAST_MESSAGES } from '../lib/toastMessages';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, UserIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 
 const LoginPage: NextPage = () => {
   const router = useRouter();
@@ -34,14 +34,27 @@ const LoginPage: NextPage = () => {
     e.preventDefault();
     setLoading(true);
     
+    // Проверяем минимальную длину пароля
+    if (password.length < 4) {
+      showToast('Пароль должен содержать минимум 4 символа', 'error');
+      setLoading(false);
+      return;
+    }
+    
     try {
+      // Определяем, является ли введенное значение email или именем
+      const isEmail = username.includes('@');
+      const loginData = isEmail 
+        ? { email: username, password }
+        : { username, password };
+      
       const success = await login(username, password);
       
       if (success) {
         showToast(TOAST_MESSAGES.SUCCESS.LOGIN, 'success');
         router.push('/');
       } else {
-        showToast('Неверный email или пароль', 'error');
+        showToast('Неверный email/имя или пароль', 'error');
       }
     } catch (error: any) {
       showToast(error.message || 'Ошибка при входе', 'error');
@@ -130,31 +143,18 @@ const LoginPage: NextPage = () => {
               </div>
 
               <div>
-                <label className="text-slate-900 text-sm font-medium mb-2 block">Имя пользователя</label>
+                <label className="text-slate-900 text-sm font-medium mb-2 block">Email или имя пользователя</label>
                 <div className="relative flex items-center">
                   <input
                     name="username"
-                    type="email"
+                    type="text"
                     required
                     className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-blue-600"
-                    placeholder="Введите имя пользователя"
+                    placeholder="Введите email или имя"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                   />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#bbb"
-                    className="w-[18px] h-[18px] absolute right-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-                    />
-                  </svg>
+                  <UserIcon className="w-[18px] h-[18px] absolute right-4 text-gray-400" />
                 </div>
               </div>
 
@@ -224,20 +224,7 @@ const LoginPage: NextPage = () => {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                   />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#bbb"
-                    className="w-[18px] h-[18px] absolute right-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-                    />
-                  </svg>
+                  <UserIcon className="w-[18px] h-[18px] absolute right-4 text-gray-400" />
                 </div>
               </div>
 
@@ -253,20 +240,7 @@ const LoginPage: NextPage = () => {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                   />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#bbb"
-                    className="w-[18px] h-[18px] absolute right-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-                    />
-                  </svg>
+                  <UserIcon className="w-[18px] h-[18px] absolute right-4 text-gray-400" />
                 </div>
               </div>
 
@@ -282,20 +256,7 @@ const LoginPage: NextPage = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#bbb"
-                    className="w-[18px] h-[18px] absolute right-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                    />
-                  </svg>
+                  <EnvelopeIcon className="w-[18px] h-[18px] absolute right-4 text-gray-400" />
                 </div>
               </div>
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ReactNode, useState, useEffect } from 'react';
-import { PlusIcon, XMarkIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, XMarkIcon, DocumentDuplicateIcon, PrinterIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 type Props = {
   title: string;
@@ -10,6 +10,7 @@ type Props = {
     href?: string;
     onClick?: (e?: any) => void;
     disabled?: boolean;
+    icon?: ReactNode;
   };
   copyAction?: {
     label: string;
@@ -55,9 +56,7 @@ export default function PageHeader({
             className="text-gray-600 hover:text-gray-800"
             title="Назад"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
+            <ArrowLeftIcon className="w-6 h-6" />
           </button>
         )}
         <h1 className="text-xl font-bold text-gray-800">{title}</h1>
@@ -90,8 +89,17 @@ export default function PageHeader({
               disabled={action.disabled}
               className={`btn text-xs flex items-center gap-2 disabled:opacity-50 ${action.label.includes('Печать') ? 'hidden sm:flex' : ''}`}
             >
-              {action.label.includes('Сохранить') || action.label.includes('Отправить') ? null : <PlusIcon className="w-4 h-4" />}
-              {action.label}
+              {action.icon ? (
+                <>
+                  {action.icon}
+                  <PlusIcon className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  {action.label.includes('Сохранить') || action.label.includes('Отправить') ? null : <PlusIcon className="w-4 h-4" />}
+                  {action.label}
+                </>
+              )}
             </button>
           )
         )}

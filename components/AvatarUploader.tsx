@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { XMarkIcon, UserIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 interface UploadedAvatar {
   id?: string;
@@ -71,16 +72,12 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({
                 className="absolute -top-1 -right-1 p-1 bg-red-500 rounded-full text-white hover:bg-red-600 opacity-0 group-hover:opacity-100"
                 title="Удалить аватар"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <XMarkIcon className="w-3 h-3" />
               </button>
             </div>
           ) : (
             <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center bg-gray-50">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+              <UserIcon className="w-8 h-8 text-gray-400" />
             </div>
           )}
         </div>
@@ -91,9 +88,7 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({
             htmlFor="avatarFile" 
             className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <PlusIcon className="w-4 h-4 mr-2" />
             {avatar ? 'Изменить аватар' : 'Загрузить аватар'}
             <input
               ref={fileInputRef}
