@@ -80,9 +80,9 @@ const ColorsPage: NextPage = () => {
   };
 
   const handleEditColor = (color: Color) => {
-    // Проверяем права доступа - редактирование только для администраторов
-    if (!user || user.role_id !== 1) {
-      showToast('Редактирование цветов доступно только администраторам', 'error');
+    // Проверяем права доступа - редактирование для администраторов и менеджеров
+    if (!user || ![1, 4].includes(user.role_id)) {
+      showToast('Редактирование цветов доступно только администраторам и менеджерам', 'error');
       return;
     }
     setEditingColor(color);

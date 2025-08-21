@@ -314,7 +314,7 @@ const ColorModal: React.FC<ColorModalProps> = ({ isOpen, onClose, onSuccess, col
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
-            {isEditing && (color?.product_count || 0) === 0 && user?.role_id === 1 && (
+            {isEditing && (color?.product_count || 0) === 0 && [1, 4].includes(user?.role_id || 0) && (
               <button
                 type="button"
                 onClick={handleDelete}
