@@ -1,8 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
+import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withPermissions(
+  RoleChecks.canManageBrands,
+  'Создание брендов разрешено только администраторам'
+)(async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
       const { name, company_id } = req.body;
@@ -41,4 +45,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}); 

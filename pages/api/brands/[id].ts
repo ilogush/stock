@@ -1,8 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie, logUserActionDirect as logActionGeneric } from '../../../lib/actionLogger';
+import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default withPermissions(
+  RoleChecks.canManageBrands,
+  'Доступ к брендам разрешен только администраторам'
+)(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
   if (req.method === 'GET') {
@@ -91,4 +95,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}); 
