@@ -42,7 +42,10 @@ export default function TaskModal({ task, isOpen, onClose, onStatusChange }: Tas
     try {
       const res = await fetch(`/api/tasks/${task.id}`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': user?.id?.toString() || '0'
+        }
       });
 
       if (res.ok) {

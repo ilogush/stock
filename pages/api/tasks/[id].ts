@@ -7,6 +7,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'id обязательен' });
 
+  const userIdHeader = req.headers['x-user-id'];
+  const currentUserId = Array.isArray(userIdHeader) ? parseInt(userIdHeader[0]) : parseInt(userIdHeader || '0');
+
+  if (!currentUserId) {
+    return res.status(401).json({ error: 'Не авторизован' });
+  }
+
   if (req.method === 'GET') {
     try {
       // Получаем задание
