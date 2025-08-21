@@ -28,8 +28,33 @@ export default function TaskModal({ task, isOpen, onClose, onStatusChange }: Tas
     if (task) {
       setCurrentStatus(task.status);
       setComment('');
+      
+      // Автоматически обновляем статус при открытии модального окна
+      if (task.status === 'new') {
+        handleAutoStatusUpdate();
+      }
     }
   }, [task]);
+
+  const handleAutoStatusUpdate = async () => {
+    if (!task || task.status !== 'new') return;
+    
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (res.ok) {
+        const updatedTask = await res.json();
+        setCurrentStatus(updatedTask.status);
+        // Обновляем родительский компонент
+        onStatusChange?.();
+      }
+    } catch (error) {
+      console.error('Ошибка автоматического обновления статуса:', error);
+    }
+  };
 
   const handleStatusChange = async () => {
     if (!task) return;

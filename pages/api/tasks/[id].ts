@@ -8,9 +8,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!id) return res.status(400).json({ error: 'id обязательен' });
 
   if (req.method === 'GET') {
-    const { data, error } = await supabaseAdmin.from('tasks').select('*').eq('id', id).single();
-    if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json(data);
+    try {
+      // Получаем задание
+      const { data: task, error: taskError } = await supabaseAdmin
+        .from('tasks')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (taskError) {
+        console.error('Ошибка получения задания:', taskError);
+        return res.status(500).json({ error: 'Ошибка получения задания' });
+      }
+
+      if (!task) {
+        return res.status(404).json({ error: 'Задание не найдено' });
+      }
+
+      // Автоматически обновляем статус на "viewed" если задание новое
+      if (task.status === 'new') {
+        const { error: updateError } = await supabaseAdmin
+          .from('tasks')
+          .update({ 
+            status: 'viewed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id);
+
+        if (updateError) {
+          console.error('Ошибка обновления статуса:', updateError);
+        } else {
+          // Логируем действие
+          try {
+            const actorId = getUserIdFromCookie(req);
+            await logAction({ 
+              user_id: actorId || 0, 
+              action_name: 'Просмотр задания', 
+              status: 'success', 
+              details: `Задание ${id} автоматически помечено как просмотрено` 
+            });
+          } catch {}
+
+          // Обновляем данные задания
+          task.status = 'viewed';
+          task.updated_at = new Date().toISOString();
+        }
+      }
+
+      return res.status(200).json(task);
+    } catch (error) {
+      console.error('Ошибка обработки запроса:', error);
+      return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    }
   }
 
   if (req.method === 'PUT') {
