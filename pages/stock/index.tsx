@@ -17,7 +17,7 @@ type Size = {
   name: string;
 };
 
-type WarehouseProduct = {
+type StockProduct = {
   id: number;
   name: string;
   article: string;
@@ -40,10 +40,10 @@ type PaginationInfo = {
   totalPages: number;
 };
 
-const WarehousePage: NextPage = () => {
+const StockPage: NextPage = () => {
   const router = useRouter();
   const { showToast } = useToast();
-  const [items, setItems] = useState<WarehouseProduct[]>([]);
+  const [items, setItems] = useState<StockProduct[]>([]);
   const [sizes, setSizes] = useState<string[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({ total: 0, page: 1, limit: 20, totalPages: 0 });
   const [currentCategory, setCurrentCategory] = useState<string>('all');
@@ -163,7 +163,7 @@ const WarehousePage: NextPage = () => {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Склад</h1>
+        <h1 className="text-xl font-bold text-gray-800">Stock</h1>
         <div className="flex items-center gap-3">
           {/* Поиск справа от заголовка */}
           <div className="relative w-full sm:w-64">
@@ -381,4 +381,4 @@ const WarehousePage: NextPage = () => {
   );
 };
 
-export default WarehousePage; 
+export default StockPage; 

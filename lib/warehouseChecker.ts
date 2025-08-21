@@ -1,6 +1,6 @@
 /**
- * Функции для проверки складских остатков товаров
- * Проверяет наличие товара на складе перед изменением цвета
+ * Функции для проверки stock остатков товаров
+ * Проверяет наличие товара в stock перед изменением цвета
  * Обновлено для работы без таблицы stock (ранее product_stock)
  */
 
@@ -20,9 +20,9 @@ export interface StockDetailsItem {
 }
 
 /**
- * Проверяет, есть ли товар в складских остатках
+ * Проверяет, есть ли товар в stock остатках
  */
-export async function checkProductInWarehouse(productId: number): Promise<{
+export async function checkProductInStock(productId: number): Promise<{
   hasStock: boolean;
   totalQuantity: number;
   stockItems: StockItem[];
@@ -84,10 +84,13 @@ export async function checkProductInWarehouse(productId: number): Promise<{
       stockItems
     };
   } catch (error) {
-    console.error('Ошибка проверки складских остатков:', error);
+    console.error('Ошибка проверки stock остатков:', error);
     return { hasStock: false, totalQuantity: 0, stockItems: [] };
   }
 }
+
+// Алиас для обратной совместимости
+export const checkProductInWarehouse = checkProductInStock;
 
 /**
  * Проверяет, можно ли изменить цвет товара

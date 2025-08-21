@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
-import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import Paginator from '../../components/Paginator';
 import { useToast } from '../../components/ToastContext';
 import { useAuth } from '../../components/AuthContext';
+import DataTable, { Column } from '../../components/DataTable';
 import Link from 'next/link';
 
 interface Receipt {
@@ -90,28 +91,67 @@ const ReceiptsPage: NextPage = () => {
     fetchReceipts(1, newLimit, searchQuery);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить это поступление?')) {
-      return;
-    }
 
-    try {
-      const response = await fetch(`/api/receipts/${id}`, {
-        method: 'DELETE',
-      });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Ошибка удаления');
-      }
+  const columns: Column<Receipt>[] = [
+    {
+      key: 'receipt_number',
+      header: 'НОМЕР',
+      render: (value, row) => (
+        <Link 
+          href={`/receipts/${row.id}`}
+          className="px-2 py-0.5 rounded-full border border-gray-800 bg-gray-800 text-white text-xs hover:bg-gray-900 table-cell-mono"
+        >
+          {value}
+        </Link>
+      )
+    },
+    {
+      key: 'received_at',
+      header: 'ДАТА',
+      render: (value, row) => new Date(value || row.created_at).toLocaleDateString()
+    },
+    {
+      key: 'transferrer_name',
+      header: 'ПОСТАВЩИК',
+      render: (value) => value || '—'
+    },
+    {
+      key: 'creator_name',
+      header: 'ПРИНЯЛ',
+      render: (value) => value || '—'
+    },
+    {
+      key: 'first_article',
+      header: 'ТОВАРЫ',
+      render: (value, row) => (
+        <div>
+          {value || '—'}
+          {row.items && row.items.length > 1 && (
+            <span className="text-gray-500 text-xs ml-1">
+              +{row.items.length - 1}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'total_items',
+      header: 'КОЛИЧЕСТВО',
+      render: (value) => `${value || 0} шт.`,
+      align: 'center'
+    },
+    {
+      key: 'notes',
+      header: 'ПРИМЕЧАНИЯ',
+      render: (value) => (
+        <div className="max-w-xs truncate">
+          {value || '—'}
+        </div>
+      )
+    },
 
-      showToast('Поступление удалено', 'success');
-      fetchReceipts(pagination.page, pagination.limit, searchQuery);
-    } catch (error: any) {
-      console.error('Ошибка удаления:', error);
-      showToast(error.message || 'Ошибка удаления', 'error');
-    }
-  };
+  ];
 
   return (
     <div>
@@ -158,94 +198,23 @@ const ReceiptsPage: NextPage = () => {
       </div>
 
       {/* Таблица */}
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="text-gray-500">Загрузка...</div>
-          </div>
-        ) : receipts.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-gray-500">Поступления не найдены</div>
-          </div>
-        ) : (
-          <table className="table-standard">
-            <thead>
-              <tr>
-                <th className="table-header">Номер</th>
-                <th className="table-header">Дата</th>
-                <th className="table-header">Поставщик</th>
-                <th className="table-header">Принял</th>
-                <th className="table-header">Товары</th>
-                <th className="table-header">Количество</th>
-                <th className="table-header">Примечания</th>
-                <th className="table-header">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="table-body">
-              {receipts.map((receipt) => (
-                <tr key={receipt.id} className="table-row-hover">
-                  <td className="table-cell">
-                    <Link 
-                      href={`/receipts/${receipt.id}`}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      {receipt.receipt_number}
-                    </Link>
-                  </td>
-                  <td className="table-cell">
-                    {new Date(receipt.received_at || receipt.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="table-cell">{receipt.transferrer_name || '—'}</td>
-                  <td className="table-cell">{receipt.creator_name || '—'}</td>
-                  <td className="table-cell">
-                    {receipt.first_article || '—'}
-                    {receipt.items && receipt.items.length > 1 && (
-                      <span className="text-gray-500 text-xs ml-1">
-                        +{receipt.items.length - 1}
-                      </span>
-                    )}
-                  </td>
-                  <td className="table-cell">{receipt.total_items || 0} шт.</td>
-                  <td className="table-cell max-w-xs truncate">
-                    {receipt.notes || '—'}
-                  </td>
-                  <td className="table-cell">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/receipts/${receipt.id}`}
-                        className="btn text-xs"
-                        title="Просмотр"
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                        просмотр
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(receipt.id)}
-                        className="btn text-xs"
-                        title="Удалить"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                        удалить
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <DataTable
+        data={receipts}
+        columns={columns}
+        loading={loading}
+        emptyMessage="Поступления не найдены"
+      />
 
       {/* Пагинация */}
       {!loading && receipts.length > 0 && (
         <div className="mt-6">
-                     <Paginator
-             total={pagination.total}
-             page={pagination.page}
-             limit={pagination.limit}
-             onPageChange={handlePageChange}
-             onPageSizeChange={handlePageSizeChange}
-           />
+          <Paginator
+            total={pagination.total}
+            page={pagination.page}
+            limit={pagination.limit}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         </div>
       )}
     </div>

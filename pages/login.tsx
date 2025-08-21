@@ -22,9 +22,6 @@ const LoginPage: NextPage = () => {
   const [email, setEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
 
   // Перенаправляем если пользователь уже авторизован
   useEffect(() => {
@@ -53,36 +50,7 @@ const LoginPage: NextPage = () => {
     }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setForgotPasswordLoading(true);
-    
-    try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: forgotPasswordEmail,
-        }),
-      });
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Ошибка при восстановлении пароля');
-      }
-
-      showToast('Пароль отправлен на ваш email', 'success');
-      setShowForgotPassword(false);
-      setForgotPasswordEmail('');
-    } catch (error: any) {
-      showToast(error.message, 'error');
-    } finally {
-      setForgotPasswordLoading(false);
-    }
-  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,28 +184,7 @@ const LoginPage: NextPage = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 shrink-0 text-blue-600 focus:ring-blue-500 border-slate-300 rounded-lg"
-                  />
-                  <label htmlFor="remember-me" className="ml-3 block text-sm text-slate-900">
-                    Запомнить меня
-                  </label>
-                </div>
-                <div className="text-sm">
-                  <button
-                    type="button"
-                    className="text-blue-600 hover:underline font-medium"
-                    onClick={() => setShowForgotPassword(true)}
-                  >
-                    Забыли пароль?
-                  </button>
-                </div>
-              </div>
+
 
               <div className="mt-12">
                 <button
@@ -255,60 +202,6 @@ const LoginPage: NextPage = () => {
                     onClick={() => setIsLoginForm(false)}
                   >
                     Зарегистрироваться
-                  </button>
-                </p>
-              </div>
-            </form>
-          ) : showForgotPassword ? (
-            <form className="space-y-6" onSubmit={handleForgotPassword}>
-              <div className="mb-12">
-                <h1 className="text-slate-900 text-3xl font-semibold">Восстановление пароля</h1>
-              </div>
-
-              <div>
-                <label className="text-slate-900 text-sm font-medium mb-2 block">Email</label>
-                <div className="relative flex items-center">
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-blue-600"
-                    placeholder="Введите ваш email"
-                    value={forgotPasswordEmail}
-                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                  />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="#bbb"
-                    className="w-[18px] h-[18px] absolute right-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="mt-12">
-                <button
-                  type="submit"
-                  className="w-full btn text-[15px] font-medium tracking-wide shadow-xl focus:outline-none"
-                  disabled={forgotPasswordLoading}
-                >
-                  {forgotPasswordLoading ? 'Отправка...' : 'Отправить пароль'}
-                </button>
-                <p className="text-sm mt-6 text-center text-slate-600">
-                  <button
-                    type="button"
-                    className="text-blue-600 font-medium hover:underline"
-                    onClick={() => setShowForgotPassword(false)}
-                  >
-                    Вернуться к входу
                   </button>
                 </p>
               </div>

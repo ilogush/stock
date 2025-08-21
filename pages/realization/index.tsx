@@ -2,11 +2,12 @@ import { NextPage } from 'next';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import Paginator from '../../components/Paginator';
 import { useToast } from '../../components/ToastContext';
 import { useAuth } from '../../components/AuthContext';
 import { useUserRole } from '../../lib/hooks/useUserRole';
+import DataTable, { Column } from '../../components/DataTable';
 
 interface Realization {
   id: string;
@@ -92,28 +93,64 @@ const RealizationPage: NextPage = () => {
     fetchRealizations(1, newLimit, searchQuery);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту реализацию?')) {
-      return;
+  const columns: Column<Realization>[] = [
+    {
+      key: 'realization_number',
+      header: 'НОМЕР',
+      render: (value, row) => (
+        <Link 
+          href={`/realization/${row.id}`}
+          className="px-2 py-0.5 rounded-full border border-gray-800 bg-gray-800 text-white text-xs hover:bg-gray-900 table-cell-mono"
+        >
+          {value}
+        </Link>
+      )
+    },
+    {
+      key: 'shipped_at',
+      header: 'ДАТА',
+      render: (value, row) => new Date(value || row.created_at).toLocaleDateString()
+    },
+    {
+      key: 'sender_name',
+      header: 'ОТПРАВИТЕЛЬ',
+      render: (value) => value || '—'
+    },
+    {
+      key: 'recipient_name',
+      header: 'ПОЛУЧАТЕЛЬ',
+      render: (value) => value || '—'
+    },
+    {
+      key: 'first_article',
+      header: 'ТОВАРЫ',
+      render: (value, row) => (
+        <div>
+          {value || '—'}
+          {row.items && row.items.length > 1 && (
+            <span className="text-gray-500 text-xs ml-1">
+              +{row.items.length - 1}
+            </span>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'total_items',
+      header: 'КОЛИЧЕСТВО',
+      render: (value) => `${value || 0} шт.`,
+      align: 'center'
+    },
+    {
+      key: 'notes',
+      header: 'ПРИМЕЧАНИЯ',
+      render: (value) => (
+        <div className="max-w-xs truncate">
+          {value || '—'}
+        </div>
+      )
     }
-
-    try {
-      const response = await fetch(`/api/realization/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Ошибка удаления');
-      }
-
-      showToast('Реализация удалена', 'success');
-      fetchRealizations(pagination.page, pagination.limit, searchQuery);
-    } catch (error: any) {
-      console.error('Ошибка удаления:', error);
-      showToast(error.message || 'Ошибка удаления', 'error');
-    }
-  };
+  ];
 
   return (
     <div>
@@ -162,83 +199,12 @@ const RealizationPage: NextPage = () => {
       </div>
 
       {/* Таблица */}
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="text-gray-500">Загрузка...</div>
-          </div>
-        ) : realizations.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-gray-500">Реализации не найдены</div>
-          </div>
-        ) : (
-          <table className="table-standard">
-            <thead>
-              <tr>
-                <th className="table-header">Номер</th>
-                <th className="table-header">Дата</th>
-                <th className="table-header">Отправитель</th>
-                <th className="table-header">Получатель</th>
-                <th className="table-header">Товары</th>
-                <th className="table-header">Количество</th>
-                <th className="table-header">Примечания</th>
-                <th className="table-header">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="table-body">
-              {realizations.map((realization) => (
-                <tr key={realization.id} className="table-row-hover">
-                  <td className="table-cell">
-                    <Link 
-                      href={`/realization/${realization.id}`}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      {realization.realization_number}
-                    </Link>
-                  </td>
-                  <td className="table-cell">
-                    {new Date(realization.shipped_at || realization.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="table-cell">{realization.sender_name || '—'}</td>
-                  <td className="table-cell">{realization.recipient_name || '—'}</td>
-                  <td className="table-cell">
-                    {realization.first_article || '—'}
-                    {realization.items && realization.items.length > 1 && (
-                      <span className="text-gray-500 text-xs ml-1">
-                        +{realization.items.length - 1}
-                      </span>
-                    )}
-                  </td>
-                  <td className="table-cell">{realization.total_items || 0} шт.</td>
-                  <td className="table-cell max-w-xs truncate">
-                    {realization.notes || '—'}
-                  </td>
-                  <td className="table-cell">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/realization/${realization.id}`}
-                        className="btn text-xs"
-                        title="Просмотр"
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                        просмотр
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(realization.id)}
-                        className="btn text-xs"
-                        title="Удалить"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                        удалить
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <DataTable
+        data={realizations}
+        columns={columns}
+        loading={loading}
+        emptyMessage="Реализации не найдены"
+      />
 
       {/* Пагинация */}
       {!loading && realizations.length > 0 && (

@@ -159,8 +159,8 @@ export interface RealizationItem {
   brand_name?: string;
 }
 
-// Оставляем старые интерфейсы для обратной совместимости
-export interface WarehouseTask {
+// Интерфейсы для задач склада (stock tasks)
+export interface StockTask {
   id: number;
   name: string;
   position: string;
@@ -173,6 +173,9 @@ export interface WarehouseTask {
   created_at: string;
   updated_at?: string;
 }
+
+// Оставляем старые интерфейсы для обратной совместимости
+export interface WarehouseTask extends StockTask {}
 
 // Расширенные типы с связанными данными
 export interface ProductWithDetails extends Product {
@@ -220,7 +223,7 @@ export interface CreateReceiptItemForm {
   price?: number;
 }
 
-export interface WarehouseItem {
+export interface StockItem {
   id: number;
   product_id: number;
   size_code: string;
@@ -230,6 +233,9 @@ export interface WarehouseItem {
   category?: Category;
   brand?: Brand;
 }
+
+// Оставляем старые интерфейсы для обратной совместимости
+export interface WarehouseItem extends StockItem {}
 
 // НОВЫЕ ТИПЫ ДЛЯ API ВАЛИДАЦИИ
 export interface CustomerData {

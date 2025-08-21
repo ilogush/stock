@@ -6,6 +6,7 @@ import { useAuth } from '../../components/AuthContext';
 import PageHeader from '../../components/PageHeader';
 import { translateSupabaseError } from '../../lib/supabaseErrorTranslations';
 
+
 interface Product {
   id: number;
   name: string;
@@ -232,6 +233,9 @@ const NewReceiptPage: NextPage = () => {
     setArticleError('');
     setShowArticleSuggestions(false);
     
+    // Сбрасываем выбранный цвет при смене товара
+    setCurrentItem(prev => ({ ...prev, color_id: 0 }));
+    
     // Загружаем размеры по категории товара
     if (product.category_id) {
       loadCategorySizes(product.category_id);
@@ -285,7 +289,7 @@ const NewReceiptPage: NextPage = () => {
       product_name: product?.name || '',
       product_article: product?.article || '',
       size_name: size?.code || currentItem.size_code || '',
-      color_name: colors.find(c => c.id === currentItem.color_id)?.name || `ID: ${currentItem.color_id}`,
+      color_name: productColors.find(c => c.id === currentItem.color_id)?.name || `ID: ${currentItem.color_id}`,
       brand_name: brand?.name || ''
     };
 
@@ -312,6 +316,27 @@ const NewReceiptPage: NextPage = () => {
     setItems(prev => prev.map(item => 
       item.id === id ? { ...item, quantity } : item
     ));
+  };
+
+  // Увеличить количество в позиции
+  const increaseQuantity = (id: string) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, quantity: item.quantity + 1 };
+      }
+      return item;
+    }));
+  };
+
+  // Уменьшить количество в позиции
+  const decreaseQuantity = (id: string) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const newQuantity = Math.max(item.quantity - 1, 1);
+        return { ...item, quantity: newQuantity };
+      }
+      return item;
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -399,6 +424,9 @@ const NewReceiptPage: NextPage = () => {
     setProductPreview(product);
     setArticleError('');
     setShowArticleSuggestions(false);
+    
+    // Сбрасываем выбранный цвет при смене товара
+    setCurrentItem(prev => ({ ...prev, color_id: 0 }));
     
     // Загружаем цвета для выбранного товара
     loadProductColors(product.id);
@@ -567,7 +595,7 @@ const NewReceiptPage: NextPage = () => {
                 required
               >
                 <option value="">Выберите цвет</option>
-                {colors.map(color => (
+                {productColors.map(color => (
                   <option key={color.id} value={color.id}>
                     {color.name}
                   </option>
@@ -630,60 +658,70 @@ const NewReceiptPage: NextPage = () => {
 
         </div>
 
-        {/* Таблица добавленных позиций */}
+        {/* Список добавленных позиций */}
         {items.length > 0 && (
-          <div>
-            <h3 className="text-lg text-gray-700 mb-4">Добавленные позиции ({items.length})</h3>
-            <div className="flex gap-6">
-              <div className="flex-1 overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Товар</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Артикул</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Бренд</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Размер</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Цвет</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Количество</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ДЕЙСТВИЯ</th>
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900">Добавленные позиции</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Товар</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Артикул</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Бренд</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Размер</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Цвет</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Количество</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {items.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-3 py-2 text-sm text-gray-900">{item.product_name}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 font-mono">{item.product_article}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900">{item.brand_name}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900">{item.size_name}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900">{item.color_name}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900">
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                          className="w-20 rounded border border-gray-300 p-1 text-center focus:border-blue-500 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-sm">
+                        <button
+                          type="button"
+                          onClick={() => increaseQuantity(item.id)}
+                          className="btn text-xs"
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => decreaseQuantity(item.id)}
+                          className="btn text-xs ml-1"
+                        >
+                          -
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id)}
+                          className="btn text-xs ml-1"
+                        >
+                          удалить
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {items.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-sm text-gray-900">{item.product_name}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900 font-mono">{item.product_article}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">{item.brand_name}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">{item.size_name}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">{item.color_name}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900">
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                            className="w-20 rounded border border-gray-300 p-1 text-center focus:border-blue-500 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <button
-                            type="button"
-                            onClick={() => removeItem(item.id)}
-                            className="btn text-xs"
-                          >
-                            удалить
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-                )}
+        )}
 
 
       </form>

@@ -65,14 +65,14 @@ export default function DataTable<T = any>({
 
   return (
     <div className={`overflow-x-auto ${className}`}>
-      <table className={`w-full ${compact ? 'text-sm' : 'text-base'}`}>
+      <table className="table-standard">
         {showHeader && (
           <thead>
-            <tr className="border-b border-gray-200">
+            <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider ${
+                  className={`table-header ${
                     column.align === 'center' ? 'text-center' : 
                     column.align === 'right' ? 'text-right' : 'text-left'
                   } ${column.width ? column.width : ''}`}
@@ -83,17 +83,17 @@ export default function DataTable<T = any>({
             </tr>
           </thead>
         )}
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="table-body">
           {data.map((row, index) => (
             <tr
               key={getRowKey(row, index)}
-              className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''}`}
+              className={`table-row-hover ${onRowClick ? 'cursor-pointer' : ''}`}
               onClick={() => onRowClick?.(row)}
             >
               {columns.map((column) => (
                 <td
                   key={column.key}
-                  className={`px-3 py-2 text-sm text-gray-900 ${
+                  className={`table-cell ${
                     column.align === 'center' ? 'text-center' : 
                     column.align === 'right' ? 'text-right' : 'text-left'
                   }`}

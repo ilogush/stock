@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArchiveBoxIcon } from '@heroicons/react/24/outline';
 
-interface WarehouseTask {
+interface StockTask {
   id: number;
   task_number: string;
   title: string;
@@ -16,13 +16,13 @@ interface WarehouseTask {
   updated_at: string;
 }
 
-interface WarehouseTasksProps {
+interface StockTasksProps {
   userRole: string;
-  onTaskClick?: (task: WarehouseTask) => void;
+  onTaskClick?: (task: StockTask) => void;
 }
 
-export default function WarehouseTasks({ userRole, onTaskClick }: WarehouseTasksProps) {
-  const [tasks, setTasks] = useState<WarehouseTask[]>([]);
+export default function StockTasks({ userRole, onTaskClick }: StockTasksProps) {
+  const [tasks, setTasks] = useState<StockTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
@@ -37,7 +37,7 @@ export default function WarehouseTasks({ userRole, onTaskClick }: WarehouseTasks
         setTasks(data.tasks || []);
       }
     } catch (error) {
-      console.error('Ошибка загрузки складских задач:', error);
+      console.error('Ошибка загрузки stock задач:', error);
     } finally {
       setLoading(false);
     }
@@ -70,14 +70,14 @@ export default function WarehouseTasks({ userRole, onTaskClick }: WarehouseTasks
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-4">
         <ArchiveBoxIcon className="h-5 w-5 text-gray-600" />
-        <h2 className="text-lg font-semibold text-gray-900">Складские задачи</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Stock Tasks</h2>
       </div>
 
       {loading ? (
         <div className="text-center py-4">Загрузка...</div>
       ) : tasks.length === 0 ? (
         <div className="text-center py-4 text-gray-500">
-          Нет активных складских задач
+          Нет активных задач stock
         </div>
       ) : (
         <div className="space-y-3">
