@@ -10,6 +10,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { email, username, password } = req.body;
+    
+    console.log('Получен запрос на вход:', { email, username, hasPassword: !!password });
 
     if (!password) {
       return res.status(400).json({ error: 'Пароль обязателен' });
@@ -77,10 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Если найдено несколько пользователей, проверяем пароль для каждого
           if (result.data.length > 1) {
             for (const candidateUser of result.data) {
-              if (candidateUser.is_blocked || candidateUser.is_deleted) {
-                continue; // Пропускаем заблокированных и удаленных
-              }
-              
               const isValidPassword = await verifyPassword(password, candidateUser.password_hash);
               
               if (isValidPassword) {
@@ -109,31 +107,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Неверный email или пароль' });
     }
 
-    // Проверяем статус
-    if (user.is_blocked) {
-      return res.status(403).json({ error: 'Пользователь заблокирован' });
-    }
-    
-    if (user.is_deleted) {
+    // Проверяем, что у пользователя есть пароль
+    if (!user.password_hash) {
+      console.log('У пользователя нет пароля');
       return res.status(401).json({ error: 'Неверный email или пароль' });
     }
 
+    console.log('Проверяем пароль для пользователя:', user.email);
+
     // Проверяем пароль (только если не проверяли ранее для множественных пользователей)
     if (!user.password_verified) {
+      console.log('Пароль еще не проверен, проверяем...');
       const isValidPassword = await verifyPassword(password, user.password_hash);
+      console.log('Результат проверки пароля:', isValidPassword);
       if (!isValidPassword) {
+        console.log('Пароль неверный');
         return res.status(401).json({ error: 'Неверный email или пароль' });
       }
+      console.log('Пароль верный');
+    } else {
+      console.log('Пароль уже проверен ранее');
     }
 
     // Устанавливаем куки с ID пользователя (24 часа)
-    res.setHeader('Set-Cookie', `user_id=${user.id}; HttpOnly; Path=/; Max-Age=86400`);
+    // res.setHeader('Set-Cookie', `user_id=${user.id}; HttpOnly; Path=/; Max-Age=86400`);
 
-    // Возвращаем данные пользователя без пароля
-    const { password_hash, ...userWithoutPassword } = user;
-    
+    // Возвращаем только ID пользователя для тестирования
     return res.status(200).json({ 
-      user: userWithoutPassword,
+      user: { id: user.id },
       message: 'Успешный вход' 
     });
 
