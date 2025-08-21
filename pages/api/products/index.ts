@@ -54,55 +54,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         query = query.eq('brand_id', brand);
       }
 
-      // 🔍 ПОИСК по товарам (включая поиск по цвету и цене)
+      // 🔍 ОБЪЕДИНЕННЫЙ ПОИСК по товарам
       if (search && typeof search === 'string' && search.trim() !== '') {
-        const searchTerm = decodeURIComponent(search.trim());
+        const searchTerm = decodeURIComponent(search.trim()).toLowerCase();
+        let allProductIds: number[] = [];
         
-        // Ищем подходящие цвета
-        const { data: matchingColors } = await supabaseAdmin
-          .from('colors')
+        // 1. Ищем товары по артикулу
+        const { data: articleProducts } = await supabaseAdmin
+          .from('products')
+          .select('id')
+          .ilike('article', `%${searchTerm}%`);
+        
+        if (articleProducts && articleProducts.length > 0) {
+          allProductIds.push(...articleProducts.map((p: any) => p.id));
+        }
+        
+        // 2. Ищем товары по названию
+        const { data: nameProducts } = await supabaseAdmin
+          .from('products')
           .select('id')
           .ilike('name', `%${searchTerm}%`);
         
-        const colorIds = (matchingColors || []).map((c: any) => c.id);
-        
-        // Проверяем, является ли поисковый термин числом (цена) или диапазоном цен
-        const isNumeric = /^\d+$/.test(searchTerm);
-        const isPriceRange = /^\d+-\d+$/.test(searchTerm);
-        
-        let priceValue = null;
-        let priceMin = null;
-        let priceMax = null;
-        
-        if (isNumeric) {
-          priceValue = parseInt(searchTerm);
-        } else if (isPriceRange) {
-          const [min, max] = searchTerm.split('-').map(p => parseInt(p));
-          priceMin = min;
-          priceMax = max;
+        if (nameProducts && nameProducts.length > 0) {
+          allProductIds.push(...nameProducts.map((p: any) => p.id));
         }
         
-        // Формируем условие поиска: по названию, артикулу, цвету или цене
-        let searchConditions = [
-          `name.ilike.%${searchTerm}%`,
-          `article.ilike.%${searchTerm}%`
-        ];
+        // 3. Ищем товары по бренду
+        const { data: brandProducts } = await supabaseAdmin
+          .from('products')
+          .select('id, brand:brands(name)')
+          .ilike('brand.name', `%${searchTerm}%`);
         
-        if (colorIds.length > 0) {
-          searchConditions.push(`color_id.in.(${colorIds.join(',')})`);
+        if (brandProducts && brandProducts.length > 0) {
+          const filteredBrandProducts = brandProducts.filter((p: any) => 
+            p.brand && p.brand.name && p.brand.name.toLowerCase().includes(searchTerm)
+          );
+          if (filteredBrandProducts.length > 0) {
+            allProductIds.push(...filteredBrandProducts.map((p: any) => p.id));
+          }
         }
         
-        if (priceValue !== null) {
-          // Поиск по точной цене или близкой к ней (±10%)
-          const searchPriceMin = Math.floor(priceValue * 0.9);
-          const searchPriceMax = Math.ceil(priceValue * 1.1);
-          searchConditions.push(`and(price.gte.${searchPriceMin},price.lte.${searchPriceMax})`);
-        } else if (priceMin !== null && priceMax !== null) {
-          // Поиск по диапазону цен (например: "1000-2000")
-          searchConditions.push(`and(price.gte.${priceMin},price.lte.${priceMax})`);
+        // Убираем дубликаты и применяем фильтр
+        const uniqueProductIds = Array.from(new Set(allProductIds));
+        if (uniqueProductIds.length > 0) {
+          query = query.in('id', uniqueProductIds);
+        } else {
+          // Если ничего не найдено, возвращаем пустой результат
+          query = query.eq('id', -1);
         }
-        
-        query = query.or(searchConditions.join(','));
       }
 
       // Получаем общее количество

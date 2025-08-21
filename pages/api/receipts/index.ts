@@ -19,9 +19,90 @@ export default withPermissions(
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      // Добавляем поиск если есть
+      // 🔍 НОВЫЙ ПОИСК по поступлениям
+      let searchReceiptIds: number[] = [];
       if (search && typeof search === 'string' && search.trim()) {
-        query = query.ilike('receipt_number', `%${search.trim()}%`);
+        const searchTerm = search.trim().toLowerCase();
+        
+        // 1. Сначала ищем по номеру поступления
+        const { data: receiptNumbers } = await supabaseAdmin
+          .from('receipts')
+          .select('id')
+          .ilike('receipt_number', `%${searchTerm}%`);
+        
+        if (receiptNumbers && receiptNumbers.length > 0) {
+          // Если найдены поступления по номеру, используем только их
+          searchReceiptIds = receiptNumbers.map((r: any) => r.id);
+        } else {
+          // 2. Если по номеру не найдено, ищем по товарам в поступлениях
+          // Сначала ищем товары по артикулу
+          const { data: articleProducts } = await supabaseAdmin
+            .from('products')
+            .select('id')
+            .ilike('article', `%${searchTerm}%`);
+          
+          if (articleProducts && articleProducts.length > 0) {
+            // Ищем поступления с этими товарами
+            const productIds = articleProducts.map((p: any) => p.id);
+            const { data: receiptItems } = await supabaseAdmin
+              .from('receipt_items')
+              .select('receipt_id')
+              .in('product_id', productIds);
+            
+            if (receiptItems && receiptItems.length > 0) {
+              searchReceiptIds = Array.from(new Set(receiptItems.map((r: any) => r.receipt_id)));
+            }
+          } else {
+            // 3. Если по артикулу не найдено, ищем по названию товара
+            const { data: nameProducts } = await supabaseAdmin
+              .from('products')
+              .select('id')
+              .ilike('name', `%${searchTerm}%`);
+            
+            if (nameProducts && nameProducts.length > 0) {
+              const productIds = nameProducts.map((p: any) => p.id);
+              const { data: receiptItems } = await supabaseAdmin
+                .from('receipt_items')
+                .select('receipt_id')
+                .in('product_id', productIds);
+              
+              if (receiptItems && receiptItems.length > 0) {
+                searchReceiptIds = Array.from(new Set(receiptItems.map((r: any) => r.receipt_id)));
+              }
+            } else {
+              // 4. Если по названию не найдено, ищем по бренду
+              const { data: brandProducts } = await supabaseAdmin
+                .from('products')
+                .select('id, brand:brands(name)')
+                .ilike('brand.name', `%${searchTerm}%`);
+              
+              if (brandProducts && brandProducts.length > 0) {
+                const filteredBrandProducts = brandProducts.filter((p: any) => 
+                  p.brand && p.brand.name && p.brand.name.toLowerCase().includes(searchTerm)
+                );
+                if (filteredBrandProducts.length > 0) {
+                  const productIds = filteredBrandProducts.map((p: any) => p.id);
+                  const { data: receiptItems } = await supabaseAdmin
+                    .from('receipt_items')
+                    .select('receipt_id')
+                    .in('product_id', productIds);
+                  
+                  if (receiptItems && receiptItems.length > 0) {
+                    searchReceiptIds = Array.from(new Set(receiptItems.map((r: any) => r.receipt_id)));
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Применяем фильтр по найденным поступлениям
+        if (searchReceiptIds.length > 0) {
+          query = query.in('id', searchReceiptIds);
+        } else {
+          // Если ничего не найдено, возвращаем пустой результат
+          query = query.eq('id', -1);
+        }
       }
 
       // Получаем данные с пагинацией

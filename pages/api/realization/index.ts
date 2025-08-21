@@ -19,9 +19,90 @@ export default withPermissions(
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      // Добавляем поиск если есть
+      // 🔍 НОВЫЙ ПОИСК по реализации
+      let searchRealizationIds: number[] = [];
       if (search && typeof search === 'string' && search.trim()) {
-        query = query.ilike('realization_number', `%${search.trim()}%`);
+        const searchTerm = search.trim().toLowerCase();
+        
+        // 1. Сначала ищем по номеру реализации
+        const { data: realizationNumbers } = await supabaseAdmin
+          .from('realization')
+          .select('id')
+          .ilike('realization_number', `%${searchTerm}%`);
+        
+        if (realizationNumbers && realizationNumbers.length > 0) {
+          // Если найдены реализации по номеру, используем только их
+          searchRealizationIds = realizationNumbers.map((r: any) => r.id);
+        } else {
+          // 2. Если по номеру не найдено, ищем по товарам в реализации
+          // Сначала ищем товары по артикулу
+          const { data: articleProducts } = await supabaseAdmin
+            .from('products')
+            .select('id')
+            .ilike('article', `%${searchTerm}%`);
+          
+          if (articleProducts && articleProducts.length > 0) {
+            // Ищем реализации с этими товарами
+            const productIds = articleProducts.map((p: any) => p.id);
+            const { data: realizationItems } = await supabaseAdmin
+              .from('realization_items')
+              .select('realization_id')
+              .in('product_id', productIds);
+            
+            if (realizationItems && realizationItems.length > 0) {
+              searchRealizationIds = Array.from(new Set(realizationItems.map((r: any) => r.realization_id)));
+            }
+          } else {
+            // 3. Если по артикулу не найдено, ищем по названию товара
+            const { data: nameProducts } = await supabaseAdmin
+              .from('products')
+              .select('id')
+              .ilike('name', `%${searchTerm}%`);
+            
+            if (nameProducts && nameProducts.length > 0) {
+              const productIds = nameProducts.map((p: any) => p.id);
+              const { data: realizationItems } = await supabaseAdmin
+                .from('realization_items')
+                .select('realization_id')
+                .in('product_id', productIds);
+              
+              if (realizationItems && realizationItems.length > 0) {
+                searchRealizationIds = Array.from(new Set(realizationItems.map((r: any) => r.realization_id)));
+              }
+            } else {
+              // 4. Если по названию не найдено, ищем по бренду
+              const { data: brandProducts } = await supabaseAdmin
+                .from('products')
+                .select('id, brand:brands(name)')
+                .ilike('brand.name', `%${searchTerm}%`);
+              
+              if (brandProducts && brandProducts.length > 0) {
+                const filteredBrandProducts = brandProducts.filter((p: any) => 
+                  p.brand && p.brand.name && p.brand.name.toLowerCase().includes(searchTerm)
+                );
+                if (filteredBrandProducts.length > 0) {
+                  const productIds = filteredBrandProducts.map((p: any) => p.id);
+                  const { data: realizationItems } = await supabaseAdmin
+                    .from('realization_items')
+                    .select('realization_id')
+                    .in('product_id', productIds);
+                  
+                  if (realizationItems && realizationItems.length > 0) {
+                    searchRealizationIds = Array.from(new Set(realizationItems.map((r: any) => r.realization_id)));
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Применяем фильтр по найденным реализациям
+        if (searchRealizationIds.length > 0) {
+          query = query.in('id', searchRealizationIds);
+        } else {
+          // Если ничего не найдено, возвращаем пустой результат
+          query = query.eq('id', -1);
+        }
       }
 
       // Получаем данные с пагинацией

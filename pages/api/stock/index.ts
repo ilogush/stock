@@ -44,45 +44,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         query = query.eq('product.brand_id', brand_id);
       }
 
-      // Добавляем поиск по бренду, артикулу, названию и цвету
-      let searchProductIds: number[] = [];
-      let searchColorIds: number[] = [];
+      // 🔍 ОБЪЕДИНЕННЫЙ ПОИСК по складу
       if (search && search.trim()) {
         const searchTerm = search.trim().toLowerCase();
+        let allProductIds: number[] = [];
         
-        // 1. Ищем товары по названию или артикулу
-        const { data: searchProducts } = await supabaseAdmin
+        // 1. Ищем товары по артикулу
+        const { data: articleProducts } = await supabaseAdmin
           .from('products')
           .select('id')
-          .or(`name.ilike.%${searchTerm}%,article.ilike.%${searchTerm}%`);
+          .ilike('article', `%${searchTerm}%`);
         
-        searchProductIds = (searchProducts || []).map((p: any) => p.id);
+        if (articleProducts && articleProducts.length > 0) {
+          allProductIds.push(...articleProducts.map((p: any) => p.id));
+        }
         
-        // 2. Ищем товары по бренду
+        // 2. Ищем товары по названию
+        const { data: nameProducts } = await supabaseAdmin
+          .from('products')
+          .select('id')
+          .ilike('name', `%${searchTerm}%`);
+        
+        if (nameProducts && nameProducts.length > 0) {
+          allProductIds.push(...nameProducts.map((p: any) => p.id));
+        }
+        
+        // 3. Ищем товары по бренду
         const { data: brandProducts } = await supabaseAdmin
           .from('products')
           .select('id, brand:brands(name)')
           .ilike('brand.name', `%${searchTerm}%`);
         
-        const brandProductIds = (brandProducts || []).map((p: any) => p.id);
-        searchProductIds = [...new Set([...searchProductIds, ...brandProductIds])];
-        
-        // 3. Ищем цвета по названию
-        const { data: searchColors } = await supabaseAdmin
-          .from('colors')
-          .select('id')
-          .ilike('name', `%${searchTerm}%`);
-        
-        searchColorIds = (searchColors || []).map((c: any) => c.id);
-        
-        // Применяем фильтры
-        if (searchProductIds.length > 0 || searchColorIds.length > 0) {
-          if (searchProductIds.length > 0) {
-            query = query.in('product_id', searchProductIds);
+        if (brandProducts && brandProducts.length > 0) {
+          const filteredBrandProducts = brandProducts.filter((p: any) => 
+            p.brand && p.brand.name && p.brand.name.toLowerCase().includes(searchTerm)
+          );
+          if (filteredBrandProducts.length > 0) {
+            allProductIds.push(...filteredBrandProducts.map((p: any) => p.id));
           }
-          if (searchColorIds.length > 0) {
-            query = query.in('color_id', searchColorIds);
-          }
+        }
+        
+        // Убираем дубликаты и применяем фильтр
+        const uniqueProductIds = Array.from(new Set(allProductIds));
+        if (uniqueProductIds.length > 0) {
+          query = query.in('product_id', uniqueProductIds);
         } else {
           // Если ничего не найдено, возвращаем пустой результат
           query = query.eq('product_id', -1);
