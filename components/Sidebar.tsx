@@ -120,10 +120,11 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
       ];
     }
 
-    // Кладовщик - просмотр поступлений/реализации, создание цветов
+    // Кладовщик - просмотр товаров, поступлений/реализации, создание цветов
     if (userRole === 'storekeeper') {
       return [
         { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
+        { href: '/products', label: 'Товары', icon: CubeIcon },
         { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
         { href: '/realization', label: 'Реализация', icon: TruckIcon },
         { href: '/colors', label: 'Цвета', icon: SwatchIcon },

@@ -76,7 +76,9 @@ export default withPermissions(
       // Проверяем детские размеры для детских товаров
       if (product.category_id === 3) { // Детская категория
         const childrenSizes = ['92', '98', '104', '110', '116', '122'];
-        if (!childrenSizes.includes(item.size_code)) {
+        // Извлекаем числовую часть из размера (например, "98 - 3 года" -> "98")
+        const sizeNumber = item.size_code.split(' ')[0];
+        if (!childrenSizes.includes(sizeNumber)) {
           return res.status(400).json({ 
             error: `Детские товары должны иметь размеры от 92 до 122, получен: ${item.size_code}` 
           });
@@ -89,7 +91,7 @@ export default withPermissions(
       receipt_id: receipt.id,
       product_id: item.product_id,
       qty: item.quantity || item.qty || 0,
-      size_code: item.size_code,
+      size_code: item.size_code.split(' ')[0], // Сохраняем только числовую часть размера
       color_id: item.color_id || null
     }));
 

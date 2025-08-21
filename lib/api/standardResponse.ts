@@ -95,7 +95,7 @@ export function createPagination(
  */
 export function parsePaginationParams(query: any): { page: number; limit: number; offset: number } {
   const page = Math.max(1, parseInt(query.page as string) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(query.limit as string) || 20));
+  const limit = Math.min(1000, Math.max(1, parseInt(query.limit as string) || 20));
   const offset = (page - 1) * limit;
   
   return { page, limit, offset };
