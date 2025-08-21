@@ -166,7 +166,7 @@ const LoginPage: NextPage = () => {
               <div className="mt-12">
                 <button
                   type="submit"
-                  className="w-full btn text-[15px] font-medium tracking-wide shadow-xl focus:outline-none"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 text-[15px] font-medium tracking-wide shadow-xl focus:outline-none rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? 'Загрузка' : 'Войти'}

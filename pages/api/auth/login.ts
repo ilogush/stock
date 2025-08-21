@@ -105,22 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    if (error || !user) {
-      // Логируем неудачную попытку входа (если пользователь не найден)
-      try {
-        await supabaseAdmin
-          .from('user_actions')
-          .insert({
-            user_id: 0, // Системный ID для неудачных попыток
-            action_name: 'Попытка входа',
-            status: 'error',
-            details: `Неудачная попытка входа с ${email ? 'email: ' + email : 'именем: ' + username}`,
-            created_at: new Date().toISOString()
-          });
-      } catch (logError) {
-        console.error('Ошибка логирования неудачного входа:', logError);
-      }
-      
+    if (!user) {
       return res.status(401).json({ error: 'Неверный email или пароль' });
     }
 
@@ -137,21 +122,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!user.password_verified) {
       const isValidPassword = await verifyPassword(password, user.password_hash);
       if (!isValidPassword) {
-        // Логируем неудачную попытку входа (неверный пароль)
-        try {
-          await supabaseAdmin
-            .from('user_actions')
-            .insert({
-              user_id: user.id,
-              action_name: 'Попытка входа',
-              status: 'error',
-              details: 'Неверный пароль',
-              created_at: new Date().toISOString()
-            });
-        } catch (logError) {
-          console.error('Ошибка логирования неудачного входа:', logError);
-        }
-        
         return res.status(401).json({ error: 'Неверный email или пароль' });
       }
     }
@@ -159,23 +129,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Устанавливаем куки с ID пользователя (24 часа)
     res.setHeader('Set-Cookie', `user_id=${user.id}; HttpOnly; Path=/; Max-Age=86400`);
 
-    // Логируем успешный вход
-    try {
-      await supabaseAdmin
-        .from('user_actions')
-        .insert({
-          user_id: user.id,
-          action_name: 'Вход в систему',
-          status: 'success',
-          details: 'Успешная авторизация',
-          created_at: new Date().toISOString()
-        });
-    } catch (logError) {
-      console.error('Ошибка логирования входа:', logError);
-    }
-
     // Возвращаем данные пользователя без пароля
-    const { password_hash: _, ...userWithoutPassword } = user;
+    const { password_hash, ...userWithoutPassword } = user;
     
     return res.status(200).json({ 
       user: userWithoutPassword,
@@ -184,6 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Ошибка при входе:', error);
+    console.error('Stack trace:', error.stack);
     return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 } 
