@@ -36,14 +36,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
       user = result.data;
       error = result.error;
-    } else if (username) {
-      const result = await supabase
+        } else if (username) {
+      // Ищем всех пользователей с таким именем или фамилией
+      let result = await supabase
         .from('users')
         .select('*')
-        .or(`first_name.ilike.%${username}%,last_name.ilike.%${username}%`)
-        .single();
-      user = result.data;
-      error = result.error;
+        .or(`first_name.eq.${username},last_name.eq.${username},first_name.ilike.%${username}%,last_name.ilike.%${username}%`);
+      
+      if (result.data && result.data.length > 0) {
+        // Если найдено несколько пользователей, проверяем пароль для каждого
+        if (result.data.length > 1) {
+          for (const candidateUser of result.data) {
+            if (candidateUser.is_blocked || candidateUser.is_deleted) {
+              continue; // Пропускаем заблокированных и удаленных
+            }
+            
+            const isValidPassword = await verifyPassword(password, candidateUser.password_hash);
+            
+            if (isValidPassword) {
+              user = candidateUser;
+              user.password_verified = true; // Отмечаем, что пароль уже проверен
+              break;
+            }
+          }
+          
+          if (!user) {
+            error = { message: 'Неверный пароль' };
+          }
+        } else {
+          // Если найден только один пользователь
+          user = result.data[0];
+        }
+        error = null;
+      } else {
+        user = null;
+        error = result.error || { message: 'Пользователь не найден' };
+      }
     }
 
     if (error || !user) {
@@ -69,26 +97,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (user.is_blocked) {
       return res.status(403).json({ error: 'Пользователь заблокирован' });
     }
-
-    // Проверяем пароль
-    const isValidPassword = await verifyPassword(password, user.password_hash);
-    if (!isValidPassword) {
-      // Логируем неудачную попытку входа (неверный пароль)
-      try {
-        await supabaseAdmin
-          .from('user_actions')
-          .insert({
-            user_id: user.id,
-            action_name: 'Попытка входа',
-            status: 'error',
-            details: 'Неверный пароль',
-            created_at: new Date().toISOString()
-          });
-      } catch (logError) {
-        console.error('Ошибка логирования неудачного входа:', logError);
-      }
-      
+    
+    if (user.is_deleted) {
       return res.status(401).json({ error: 'Неверный email или пароль' });
+    }
+
+    // Проверяем пароль (только если не проверяли ранее для множественных пользователей)
+    if (!user.password_verified) {
+      const isValidPassword = await verifyPassword(password, user.password_hash);
+      if (!isValidPassword) {
+        // Логируем неудачную попытку входа (неверный пароль)
+        try {
+          await supabaseAdmin
+            .from('user_actions')
+            .insert({
+              user_id: user.id,
+              action_name: 'Попытка входа',
+              status: 'error',
+              details: 'Неверный пароль',
+              created_at: new Date().toISOString()
+            });
+        } catch (logError) {
+          console.error('Ошибка логирования неудачного входа:', logError);
+        }
+        
+        return res.status(401).json({ error: 'Неверный email или пароль' });
+      }
     }
 
     // Устанавливаем куки с ID пользователя (24 часа)
