@@ -252,7 +252,7 @@ const ActionsPage: NextPage = () => {
         <div className="relative w-64">
           <input
             type="text"
-            placeholder="Поиск по всем столбцам таблицы..."
+                          placeholder=""
             value={searchQuery}
             onChange={(e) => {
               const value = e.target.value;

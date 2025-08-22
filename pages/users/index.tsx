@@ -206,23 +206,30 @@ const UsersList: NextPage = () => {
         <div className="flex items-center gap-3">
           {/* Поиск справа от заголовка на десктопе, на отдельной строке на мобильных */}
           <div className="relative w-full sm:w-64 order-2 sm:order-1">
-            <input
-              type="text"
-              placeholder="Поиск пользователей..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                // Очищаем предыдущий таймер
-                if (searchTimeout.current) {
-                  clearTimeout(searchTimeout.current);
-                }
-                // Добавляем задержку для поиска в реальном времени
-                searchTimeout.current = setTimeout(() => {
-                  fetchUsers(1, pagination.limit, e.target.value);
-                }, 500);
-              }}
-              className="search-input block w-full"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder=""
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  // Очищаем предыдущий таймер
+                  if (searchTimeout.current) {
+                    clearTimeout(searchTimeout.current);
+                  }
+                  // Добавляем задержку для поиска в реальном времени
+                  searchTimeout.current = setTimeout(() => {
+                    fetchUsers(1, pagination.limit, e.target.value);
+                  }, 500);
+                }}
+                className="search-input block w-full pl-10 pr-4"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
           </div>
           <Link href="/users/new" className="btn text-xs flex items-center gap-2 order-1 sm:order-2">
                           <PlusIcon className="w-4 h-4" />

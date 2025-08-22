@@ -136,7 +136,7 @@ export function OptimizedDataTable<T extends { id: number | string }>({
         <div className="flex justify-between items-center">
           <input
             type="text"
-            placeholder="Поиск..."
+                          placeholder=""
             onChange={handleSearch}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
