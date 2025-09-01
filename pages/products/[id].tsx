@@ -98,7 +98,8 @@ const EditProduct: NextPage = () => {
       ]);
 
       if (productRes.ok) {
-        const productData = await productRes.json();
+        const responseData = await productRes.json();
+        const productData = responseData.data?.product || responseData; // Поддержка старого и нового формата
         setProduct(productData);
         
         // Заполняем форму
@@ -392,10 +393,9 @@ const EditProduct: NextPage = () => {
         old_price: product.old_price,
         is_popular: product.is_popular,
         is_visible: false, // Копия по умолчанию не видна на сайте
-
+        description: product.description,
+        care_instructions: product.care_instructions
       };
-
-
 
       const response = await fetch('/api/products/create', {
         method: 'POST',
@@ -406,7 +406,8 @@ const EditProduct: NextPage = () => {
       });
 
       if (response.ok) {
-        const newProduct = await response.json();
+        const responseData = await response.json();
+        const newProduct = responseData.data?.product || responseData;
         showToast('Товар успешно скопирован', 'success');
         router.push(`/products/${newProduct.id}`);
       } else {

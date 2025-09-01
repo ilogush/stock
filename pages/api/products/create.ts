@@ -42,7 +42,8 @@ export default withPermissions(
       if (!category_id || isNaN(parseInt(category_id))) {
         errors.push('Категория обязательна');
       }
-      if (!color_id || color_id.toString().trim() === '') {
+      // Цвет необязателен для копирования товаров
+      if (color_id !== null && (!color_id || color_id.toString().trim() === '')) {
         errors.push('Цвет обязателен');
       }
       if (!article || typeof article !== 'string' || !article.trim()) {

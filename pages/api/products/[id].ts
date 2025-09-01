@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Очищаем текстовые поля от лишних символов
       const cleaned = cleanProductText(normalized);
 
-      return res.status(200).json(cleaned);
+      return res.status(200).json({ data: { product: cleaned } });
     } catch (error) {
       console.error('Ошибка сервера:', error);
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
