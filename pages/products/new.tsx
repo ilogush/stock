@@ -53,8 +53,8 @@ export default function NewProduct() {
     care_instructions: ''
   });
 
-  // Проверка прав доступа - кладовщикам запрещено создавать товары
-  const isAllowed = hasAnyRole(['admin', 'director', 'manager']);
+  // Проверка прав доступа - разрешено админам, директорам, менеджерам и кладовщикам
+  const isAllowed = hasAnyRole(['admin', 'director', 'manager', 'storekeeper']);
 
   const loadData = async () => {
     try {
