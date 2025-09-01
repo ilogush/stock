@@ -176,7 +176,7 @@ const RealizationPage: NextPage = () => {
               </div>
             </div>
           </div>
-          {user?.role_id === 2 && (
+          {(user && [1,2].includes(user.role_id)) && (
             <Link href="/realization/new" className="btn text-xs flex items-center gap-2">
               <PlusIcon className="w-4 h-4" />
               Создать

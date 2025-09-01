@@ -2,11 +2,15 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { translateSupabaseError } from '../../../lib/supabaseErrorTranslations';
-import { withProductAccess, AuthenticatedRequest, logAccess } from '../../../lib/api/roleAuth';
+import { withPermissions, RoleChecks, AuthenticatedRequest, logAccess } from '../../../lib/api/roleAuth';
 import { createItemResponse, createErrorResponse } from '../../../lib/api/standardResponse';
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
 
-export default withProductAccess(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+// Разрешаем создание товаров админам, менеджерам и кладовщикам
+export default withPermissions(
+  RoleChecks.canCreateProducts,
+  'Недостаточно прав для создания товаров'
+)(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
       // 🔒 Логируем доступ к созданию товара

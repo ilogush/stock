@@ -294,12 +294,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
       });
 
-      // Применяем пагинацию
+      // Пагинация отключена для страницы склада
+      // Если есть поисковый запрос по артикулу — возвращаем все записи товара
       const totalItems = itemsWithImages.length;
-      const totalPages = Math.ceil(totalItems / limitNum);
-      const startIndex = offsetNum;
-      const endIndex = Math.min(startIndex + limitNum, totalItems);
-      const paginatedItems = itemsWithImages.slice(startIndex, endIndex);
+      const totalPages = 1;
+      const paginatedItems = itemsWithImages;
 
       // УБИРАЮ КЭШИРОВАНИЕ ДЛЯ ДИНАМИЧЕСКИХ ДАННЫХ СКЛАДА
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -307,12 +306,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({
         items: paginatedItems,
         sizes: sortedSizes,
-        pagination: {
-          total: totalItems,
-          page: pageNum,
-          limit: limitNum,
-          totalPages: totalPages
-        }
+        pagination: { total: totalItems, page: 1, limit: totalItems, totalPages: totalPages }
       });
     } catch (error) {
       console.error('Ошибка сервера:', error);

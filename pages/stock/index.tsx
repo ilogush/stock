@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 
 import { PencilIcon, TrashIcon, EyeIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../../components/ToastContext';
-import Paginator from '../../components/Paginator';
+// Пагинатор не используется на странице склада
 type Category = { id: string; name: string };
 
 type Color = {
@@ -348,16 +348,7 @@ const StockPage: NextPage = () => {
             </div>
           )}
 
-          {/* Пагинатор отображается только если есть данные */}
-          {pagination.total > 0 && (
-            <Paginator
-              total={pagination.total}
-              page={pagination.page}
-              limit={pagination.limit}
-              onPageChange={handlePageChange}
-              onPageSizeChange={(l)=>fetchItems(1,l,currentCategory,searchQuery)}
-            />
-          )}
+          {/* Пагинация отключена для страницы склада */}
         </div>
       </div>
 

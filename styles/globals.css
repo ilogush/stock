@@ -115,6 +115,12 @@
       display: none !important;
     }
     
+    /* Скрываем столбец "Фото" при печати страницы склада */
+    .table-standard th:first-child,
+    .table-standard td:first-child {
+      display: none !important;
+    }
+    
     /* Показываем только таблицы и их содержимое */
     table {
       width: 100% !important;

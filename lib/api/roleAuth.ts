@@ -46,6 +46,8 @@ export const RoleChecks = {
   
   // Управление товарами - админ и менеджер
   canManageProducts: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  // Создание товаров - админ, менеджер и кладовщик
+  canCreateProducts: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
   
   // Управление складом - админ и менеджер
   canManageWarehouse: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
@@ -71,14 +73,14 @@ export const RoleChecks = {
   // Просмотр поступлений - все кроме пользователей
   canViewReceipts: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
   
-  // Создание поступлений - только кладовщик
-  canCreateReceipts: (roleId: number) => roleId === ROLES.STOREKEEPER,
+  // Создание поступлений - админ и кладовщик
+  canCreateReceipts: (roleId: number) => ([ROLES.ADMIN, ROLES.STOREKEEPER] as number[]).includes(roleId),
   
   // Просмотр реализации - все кроме пользователей
   canViewRealization: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
   
-  // Создание реализации - только кладовщик
-  canCreateRealization: (roleId: number) => roleId === ROLES.STOREKEEPER,
+  // Создание реализации - админ и кладовщик
+  canCreateRealization: (roleId: number) => ([ROLES.ADMIN, ROLES.STOREKEEPER] as number[]).includes(roleId),
   
   // Управление цветами - создание: все кроме пользователей, редактирование: админ и менеджер
   canCreateColors: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER, ROLES.STOREKEEPER] as number[]).includes(roleId),
