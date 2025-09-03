@@ -27,6 +27,7 @@ export default function NewProduct() {
   const router = useRouter();
   const { showToast } = useToast();
   const { hasAnyRole, loading: roleLoading } = useUserRole();
+  const { copy } = router.query;
 
   // ВСЕ хуки должны быть вызваны до любых условных операторов
   const [categories, setCategories] = useState<Category[]>([]);
@@ -100,6 +101,43 @@ export default function NewProduct() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Загружаем данные копируемого товара, если есть параметр copy
+  useEffect(() => {
+    if (copy && typeof copy === 'string') {
+      loadCopyData(copy);
+    }
+  }, [copy]);
+
+  const loadCopyData = async (productId: string) => {
+    try {
+      const response = await fetch(`/api/products/${productId}`);
+      if (response.ok) {
+        const responseData = await response.json();
+        const productData = responseData.data?.product || responseData;
+        
+        // Заполняем форму данными копируемого товара, кроме цвета
+        setFormData({
+          name: productData.name || '',
+          brand_id: productData.brand_id?.toString() || '',
+          category_id: productData.category_id?.toString() || '',
+          color_id: '', // Цвет не копируем - пользователь выберет новый
+          article: productData.article || '',
+          composition: productData.composition || '',
+          price: productData.price?.toString() || '',
+          old_price: productData.old_price?.toString() || '',
+          is_popular: productData.is_popular || false,
+          is_visible: false, // По умолчанию копия не видна
+          care_instructions: productData.care_instructions || ''
+        });
+
+        showToast('Данные товара загружены для копирования. Выберите уникальный цвет.', 'info');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки данных для копирования:', error);
+      showToast('Ошибка загрузки данных для копирования', 'error');
+    }
+  };
 
   useEffect(() => {
     if (sizes.length > 0) {
@@ -307,7 +345,7 @@ export default function NewProduct() {
           return;
         }
 
-        showToast('Товар успешно создан', 'success');
+        showToast(copy ? 'Товар успешно скопирован' : 'Товар успешно создан', 'success');
 
         // Загружаем новые изображения, если они есть
         const newImages = images.filter(img => img.file);
@@ -346,11 +384,11 @@ export default function NewProduct() {
   return (
     <div>
       <PageHeader 
-        title="Создать товар" 
+        title={copy ? "Копировать товар" : "Создать товар"} 
         showBackButton
         backHref="/products"
         action={{
-          label: saving ? 'Создание...' : 'Создать',
+          label: saving ? 'Сохранение...' : 'Сохранить',
           onClick: handleSubmit,
           disabled: saving
         }}

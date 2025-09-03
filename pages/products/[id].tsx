@@ -262,7 +262,9 @@ const EditProduct: NextPage = () => {
     if (!formData.category_id) {
       errors.push('Категория обязательна');
     }
-    // Цвет теперь необязателен
+    if (!formData.color_id) {
+      errors.push('Цвет обязателен');
+    }
     if (!formData.article.trim()) {
       errors.push('Артикул обязателен');
     }
@@ -380,44 +382,8 @@ const EditProduct: NextPage = () => {
   const handleCopy = async () => {
     if (!product) return;
 
-    try {
-      // Создаем копию товара без ID, изображений и цвета
-      const copyData = {
-        name: product.name,
-        article: product.article,
-        brand_id: product.brand_id,
-        category_id: product.category_id,
-        color_id: null, // Копия создается без цвета для возможности выбора
-        composition: product.composition,
-        price: product.price,
-        old_price: product.old_price,
-        is_popular: product.is_popular,
-        is_visible: false, // Копия по умолчанию не видна на сайте
-        description: product.description,
-        care_instructions: product.care_instructions
-      };
-
-      const response = await fetch('/api/products/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(copyData),
-      });
-
-      if (response.ok) {
-        const responseData = await response.json();
-        const newProduct = responseData.data?.product || responseData;
-        showToast('Товар успешно скопирован', 'success');
-        router.push(`/products/${newProduct.id}`);
-      } else {
-        const errorData = await response.json();
-        showToast(errorData.error || 'Ошибка копирования товара', 'error');
-      }
-    } catch (error) {
-      console.error('Ошибка копирования:', error);
-      showToast('Ошибка копирования товара', 'error');
-    }
+    // Перенаправляем на страницу создания товара с параметром copy
+    router.push(`/products/new?copy=${product.id}`);
   };
 
   if (loading) {
