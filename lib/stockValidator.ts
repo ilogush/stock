@@ -14,7 +14,7 @@ import { checkStockAvailability as newCheckStockAvailability } from './stockServ
 export async function checkStockAvailability(
   productId: number,
   sizeCode: string,
-  colorId: number, // Параметр оставлен для совместимости, но не используется
+  colorId: number,
   requestedQty: number
 ): Promise<{
   available: boolean;
@@ -23,8 +23,8 @@ export async function checkStockAvailability(
   productName?: string;
   message?: string;
 }> {
-  // Используем новый сервис
-  return await newCheckStockAvailability(productId, sizeCode, requestedQty);
+  // Используем новый сервис с передачей color_id
+  return await newCheckStockAvailability(productId, sizeCode, requestedQty, colorId);
 }
 
 /**

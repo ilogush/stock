@@ -135,7 +135,8 @@ export async function calculateStock(
 export async function checkStockAvailability(
   productId: number,
   sizeCode: string,
-  requestedQty: number
+  requestedQty: number,
+  colorId?: number
 ): Promise<{
   available: boolean;
   availableQty: number;
@@ -154,8 +155,16 @@ export async function checkStockAvailability(
     // Рассчитываем остатки
     const stockResult = await calculateStock(productId, sizeCode);
     
-    // Находим остаток для конкретного размера
-    const sizeStock = stockResult.stockItems.find(item => item.size_code === sizeCode);
+    // Находим остаток для конкретного размера и цвета
+    let sizeStock;
+    if (colorId) {
+      sizeStock = stockResult.stockItems.find(item => 
+        item.size_code === sizeCode && item.color_id === colorId
+      );
+    } else {
+      sizeStock = stockResult.stockItems.find(item => item.size_code === sizeCode);
+    }
+    
     const availableQty = sizeStock ? sizeStock.qty : 0;
     const available = availableQty >= requestedQty;
 

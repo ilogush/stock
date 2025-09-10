@@ -218,7 +218,13 @@ const NewRealizationPage = () => {
           s.color_id === item.color_id
         );
         const maxQty = stockItem?.qty || 0;
-        return { ...item, qty: Math.min(newQty, maxQty) };
+        
+        if (newQty > maxQty) {
+          showToast(`Максимальное количество: ${maxQty}`, 'error');
+          return { ...item, qty: maxQty };
+        }
+        
+        return { ...item, qty: newQty };
       }
       return item;
     }));
@@ -233,8 +239,13 @@ const NewRealizationPage = () => {
           s.color_id === item.color_id
         );
         const maxQty = stockItem?.qty || 0;
-        const newQty = Math.min(item.qty + 1, maxQty);
-        return { ...item, qty: newQty };
+        
+        if (item.qty >= maxQty) {
+          showToast(`Максимальное количество: ${maxQty}`, 'error');
+          return item;
+        }
+        
+        return { ...item, qty: item.qty + 1 };
       }
       return item;
     }));
@@ -345,7 +356,14 @@ const NewRealizationPage = () => {
 
       const data = await response.json();
       
-      if (!response.ok) throw new Error(data.error);
+      if (!response.ok) {
+        // Если есть детали ошибок валидации, показываем их
+        if (data.details && Array.isArray(data.details)) {
+          const errorMessage = data.details.join('; ');
+          throw new Error(errorMessage);
+        }
+        throw new Error(data.error);
+      }
       
       showToast('Реализация создана успешно', 'success');
       router.push('/realization');
