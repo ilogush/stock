@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Базовые кнопки */
+  .btn {
+    @apply px-4 py-2 text-sm text-gray-800 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-200 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors duration-200;
+  }
+  
+  /* Поиск */
+  .search-input {
+    @apply px-4 py-2 text-sm text-gray-800 bg-transparent border border-gray-600 rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-600 placeholder-gray-500 transition-colors duration-200;
+  }
+  
+  /* Таблицы */
+  .table-standard {
+    @apply min-w-full divide-y divide-gray-200 border-0 rounded-none;
+  }
+  
+  .table-header {
+    @apply px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase tracking-wider;
+  }
+  
+  .table-cell {
+    @apply px-3 py-2 whitespace-nowrap text-sm text-gray-900;
+  }
+  
+  .table-cell-center {
+    @apply px-3 py-2 whitespace-nowrap text-sm text-gray-900 text-center;
+  }
+  
+  .table-cell-mono {
+    @apply px-3 py-2 whitespace-nowrap text-sm text-gray-900 font-mono;
+    font-variant-numeric: slashed-zero;
+  }
+  
+  .table-body {
+    @apply divide-y divide-gray-200;
+  }
+  
+  .table-row-hover {
+    @apply hover:bg-gray-50 transition-colors duration-150;
+  }
+  
+  /* Изображения товаров */
+  .product-image-container {
+    @apply w-12 h-12 flex-shrink-0;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+  }
+  
+  .product-image {
+    @apply w-12 h-12 object-cover rounded;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+  }
+  
+  .product-image-placeholder {
+    @apply w-12 h-12 flex items-center justify-center text-gray-400 bg-gray-100 rounded;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+  }
+  
+  /* Бейджи и статусы */
+  .id-badge {
+    @apply px-2 py-0.5 rounded-full border border-gray-800 bg-gray-800 text-white text-xs font-mono;
+  }
+  
+  .action-btn {
+    @apply btn text-xs px-2 py-1;
+  }
+  
+  .status-active {
+    @apply px-2 py-1 text-xs rounded-full bg-green-100 text-green-800;
+  }
+  
+  .status-inactive {
+    @apply px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800;
+  }
+  
+  .status-pending {
+    @apply px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800;
+  }
+  
+  /* Утилиты для производительности */
+  .will-change-transform {
+    will-change: transform;
+  }
+  
+  .will-change-opacity {
+    will-change: opacity;
+  }
+  
+  /* Оптимизация для печати */
+  @media print {
+    /* Скрываем все элементы интерфейса */
+    .no-print,
+    button,
+    .btn,
+    .search-input,
+    nav,
+    header,
+    footer,
+    .sidebar,
+    .topbar,
+    .pagination,
+    .paginator {
+      display: none !important;
+    }
+    
+    /* Скрываем столбец "Фото" при печати страницы склада */
+    .table-standard th:first-child,
+    .table-standard td:first-child {
+      display: none !important;
+    }
+    
+    /* Показываем только таблицы и их содержимое */
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+    
+    th, td {
+      border: 1px solid #000 !important;
+      padding: 8px !important;
+      text-align: left !important;
+    }
+    
+    th {
+      background-color: #f3f4f6 !important;
+      font-weight: bold !important;
+    }
+    
+    /* Убираем все эффекты и анимации */
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+    
+    /* Устанавливаем черно-белую печать */
+    * {
+      color: #000 !important;
+      background: #fff !important;
+    }
+    
+    /* Убираем тени и границы */
+    .shadow,
+    .border,
+    .rounded {
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+    }
+    
+    /* Скрываем иконки и изображения */
+    svg,
+    img {
+      display: none !important;
+    }
+    
+    /* Убираем отступы у контейнеров */
+    .container,
+    .mx-auto,
+    .px-4,
+    .py-4 {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+  }
+} 
