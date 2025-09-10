@@ -6,7 +6,6 @@ import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/ou
 
 import { useToast } from '../../components/ToastContext';
 import { useAuth } from '../../components/AuthContext';
-import Paginator from '../../components/Paginator';
 import ColorModal from '../../components/ColorModal';
 
 interface Color {
@@ -28,31 +27,23 @@ const ColorsPage: NextPage = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
   const [activeTab, setActiveTab] = useState<string>('all');
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 20,
-    totalPages: 0
-  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingColor, setEditingColor] = useState<Color | null>(null);
 
   // Проверяем права доступа - доступ для всех авторизованных пользователей
   const hasAccess = !!user;
 
-  const fetchColors = async (search = searchQuery, page = pagination.page, limit = pagination.limit) => {
+  const fetchColors = async (search = searchQuery) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ 
-        page: String(page), 
-        limit: String(limit) 
-      });
+      const params = new URLSearchParams();
       if (search.trim()) params.append('search', encodeURIComponent(search.trim()));
+      // Загружаем все цвета без пагинации
+      params.append('limit', '1000');
       const res = await fetch(`/api/colors?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
       setColors(data.data?.colors || []);
-      setPagination(data.pagination || { total: 0, page: 1, limit: 20, totalPages: 0 });
     } catch (err: any) {
       console.error(err);
       showToast(err.message, 'error');
@@ -64,20 +55,11 @@ const ColorsPage: NextPage = () => {
   useEffect(() => {
     const q = router.query.search as string;
     setSearchQuery(q || '');
-    fetchColors(q || '', 1, pagination.limit);
+    fetchColors(q || '');
   }, [router.query.search]);
 
   // Убираем автоматическое обновление при возврате на страницу - это создает лишние запросы
 
-  const handlePageChange = (page: number) => {
-    // Обновляем состояние пагинации
-    setPagination(prev => ({ ...prev, page }));
-    fetchColors(searchQuery, page, pagination.limit);
-  };
-
-  const handlePageSizeChange = (newLimit: number) => {
-    fetchColors(searchQuery, 1, newLimit);
-  };
 
   const handleEditColor = (color: Color) => {
     // Проверяем права доступа - редактирование для администраторов и менеджеров
@@ -91,8 +73,6 @@ const ColorsPage: NextPage = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    // При смене таба сбрасываем на первую страницу
-    fetchColors(searchQuery, 1, pagination.limit);
   };
 
   // Фильтрация цветов по табам (клиентская фильтрация для отображения)
@@ -132,7 +112,7 @@ const ColorsPage: NextPage = () => {
                   }
                   // Добавляем задержку для поиска в реальном времени
                   searchTimeout.current = setTimeout(() => {
-                    fetchColors(e.target.value, 1, pagination.limit);
+                    fetchColors(e.target.value);
                   }, 500);
                 }}
                 className="search-input block w-full pl-10 pr-4"
@@ -396,14 +376,6 @@ const ColorsPage: NextPage = () => {
           )}
         </div>
 
-        {/* Пагинатор */}
-        <Paginator
-          total={pagination.total}
-          page={pagination.page}
-          limit={pagination.limit}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
       </div>
 
       {/* Модальное окно создания/редактирования цвета */}
@@ -414,7 +386,7 @@ const ColorsPage: NextPage = () => {
           setEditingColor(null);
         }}
         onSuccess={() => {
-          fetchColors(searchQuery, pagination.page, pagination.limit);
+          fetchColors(searchQuery);
           setEditingColor(null);
         }}
         color={editingColor}

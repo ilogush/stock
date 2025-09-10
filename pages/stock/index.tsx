@@ -46,7 +46,7 @@ const StockPage: NextPage = () => {
   const [items, setItems] = useState<StockProduct[]>([]);
   const [sizes, setSizes] = useState<string[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({ total: 0, page: 1, limit: 20, totalPages: 0 });
-  const [currentCategory, setCurrentCategory] = useState<string>('all');
+  const [currentCategory, setCurrentCategory] = useState<string>('2');
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -57,7 +57,7 @@ const StockPage: NextPage = () => {
   // Дебаунс поиска с синхронизацией URL
   const debouncedSearch = useDebouncedCallback((searchTerm: string) => {
     const query: any = { page: '1', limit: String(pagination.limit) };
-    if (currentCategory && currentCategory !== 'all') query.category = currentCategory;
+    if (currentCategory) query.category = currentCategory;
     if (searchTerm && searchTerm.trim()) query.search = searchTerm.trim();
     
     // Обновляем URL без перезагрузки страницы
@@ -93,7 +93,7 @@ const StockPage: NextPage = () => {
       
       // Показываем сообщение если таб пустой
       if ((data.items || []).length === 0 && !loading) {
-        const categoryName = category === 'all' ? 'Все' : categories.find(c => c.id === category)?.name || category;
+        const categoryName = categories.find(c => c.id === category)?.name || category;
         const searchText = search && search.trim() ? ` по запросу "${search.trim()}"` : '';
         showToast(`В категории "${categoryName}"${searchText} нет товаров на складе`, 'info');
       }
@@ -138,8 +138,8 @@ const StockPage: NextPage = () => {
           if (!merged.some((c) => c.id === m.id)) merged.push(m);
         });
 
-        // Сортируем по prefer order Мужское, Женское, Детское, затем алфавит
-        const prefer = ['Мужское', 'Женское', 'Детское'];
+        // Сортируем по prefer order Женское, Мужское, Детское, затем алфавит
+        const prefer = ['Женское', 'Мужское', 'Детское'];
         merged.sort((a, b) => {
           const ai = prefer.indexOf(a.name);
           const bi = prefer.indexOf(b.name);
@@ -180,7 +180,7 @@ const StockPage: NextPage = () => {
     setCurrentCategory(cat);
     // Обновляем URL
     const query: any = { page: '1', limit: String(pagination.limit) };
-    if (cat !== 'all') query.category = cat;
+    if (cat) query.category = cat;
     if (searchQuery && searchQuery.trim()) query.search = searchQuery.trim();
     router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
     
@@ -248,11 +248,11 @@ const StockPage: NextPage = () => {
         <div className="w-full">
           <div className="flex justify-between items-center">
             <div className="flex gap-2 pb-2" aria-label="Tabs">
-              {[{id:'all',name:'Все'},...categories].map((cat)=>(
+              {categories.map((cat)=>(
                 <button 
                   key={cat.id} 
                   className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                    currentCategory===cat.id
+                    currentCategory===String(cat.id)
                       ?'bg-gray-800 text-white'
                       :'bg-gray-100 text-gray-800 hover:bg-gray-200'
                   }`} 
@@ -260,7 +260,7 @@ const StockPage: NextPage = () => {
                   disabled={loading}
                 >
                   {cat.name}
-                  {loading && currentCategory===cat.id && (
+                  {loading && currentCategory===String(cat.id) && (
                     <span className="ml-1 inline-block w-2 h-2 bg-white rounded-full"></span>
                   )}
                 </button>
@@ -347,10 +347,7 @@ const StockPage: NextPage = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                           </svg>
                           <div className="text-lg font-medium">
-                            {currentCategory === 'all' 
-                              ? 'На складе нет товаров' 
-                              : `В категории "${categories.find(c => c.id === currentCategory)?.name || currentCategory}" нет товаров`
-                            }
+                            {`В категории "${categories.find(c => c.id === currentCategory)?.name || currentCategory}" нет товаров`}
                           </div>
                           <div className="text-sm text-gray-400">
                             {searchQuery ? 'Попробуйте изменить поисковый запрос' : 'Добавьте товары через поступления'}
