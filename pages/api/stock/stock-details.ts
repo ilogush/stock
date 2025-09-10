@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Получаем данные из поступлений
       const { data: receiptItems, error } = await supabaseAdmin
         .from('receipt_items')
-        .select(`product_id,size_code,qty, product:products(id,name,article,color_id)`)
+        .select(`product_id,size_code,qty,color_id, product:products(id,name,article)`)
         .order('product_id, size_code');
       if (error) {
         console.error('Ошибка при получении данных поступлений:', error);
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Получаем данные из реализаций
       const { data: realizationItems, error: realizationError } = await supabaseAdmin
         .from('realization_items')
-        .select(`product_id,size_code,qty, product:products(color_id)`);
+        .select(`product_id,size_code,qty,color_id`);
       if (realizationError) {
         console.error('Ошибка при получении данных реализаций:', realizationError);
         return res.status(500).json({ error: 'Ошибка при получении данных реализаций' });
@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Агрегируем поступления
       const aggregated: Record<string, {product_id:number; name:string; article:string; size_code:string; color_id:number; qty:number}> = {};
       (receiptItems||[]).forEach((row:any)=>{
-        const colorId = row.product?.color_id; // Берем color_id из products
+        const colorId = row.color_id; // Берем color_id из receipt_items
         const key = `${row.product_id}_${row.size_code}_${colorId}`;
         if (!aggregated[key]) {
           aggregated[key] = { product_id: row.product_id, name: row.product?.name||'Неизвестный товар', article: row.product?.article||'', size_code: row.size_code, color_id: colorId, qty: 0 };
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Вычитаем реализации
       (realizationItems||[]).forEach((row:any)=>{
-        const colorId = row.product?.color_id; // Берем color_id из products
+        const colorId = row.color_id; // Берем color_id из realization_items
         const key = `${row.product_id}_${row.size_code}_${colorId}`;
         if (aggregated[key] !== undefined) {
           aggregated[key].qty = Math.max(0, aggregated[key].qty - (row.qty||0));

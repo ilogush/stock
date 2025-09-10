@@ -106,8 +106,8 @@ const NewRealizationPage = () => {
       return;
     }
 
-    // Ищем товар по артикулу в складских остатках
-    const stockItem = stock.find(s => s.article === article);
+    // Ищем товар по артикулу в складских остатках (точное совпадение)
+    const stockItem = stock.find(s => s.article === article.trim());
 
     if (stockItem) {
       setCurrentItem(prev => ({ ...prev, product_id: stockItem.product_id, size_code: '', color_id: 0, qty: 0 }));
@@ -129,7 +129,7 @@ const NewRealizationPage = () => {
   const availableColors = stock
     .filter(s => s.product_id === currentItem.product_id && s.size_code === currentItem.size_code)
     .map(s => ({
-      id: parseInt(s.color_id),
+      id: s.color_id,
       name: s.color_name
     }))
     .filter((value, index, self) => self.findIndex(v => v.id === value.id) === index)
@@ -139,24 +139,19 @@ const NewRealizationPage = () => {
   const maxQty = stock.find(s => 
     s.product_id === currentItem.product_id && 
     s.size_code === currentItem.size_code && 
-    parseInt(s.color_id) === currentItem.color_id
+    s.color_id === currentItem.color_id
   )?.qty || 0;
 
   // Автоматически устанавливаем количество товара на складе при выборе всех параметров
   useEffect(() => {
-    if (currentItem.product_id && currentItem.size_code && currentItem.color_id && maxQty > 0) {
+    if (currentItem.product_id && currentItem.size_code && currentItem.color_id && currentItem.color_id !== 0 && maxQty > 0) {
       setCurrentItem(prev => ({ ...prev, qty: maxQty }));
     }
   }, [currentItem.product_id, currentItem.size_code, currentItem.color_id, maxQty]);
 
   const addItem = () => {
-    if (!currentItem.product_id || !currentItem.size_code || !currentItem.color_id || currentItem.qty <= 0) {
+    if (!currentItem.product_id || !currentItem.size_code || !currentItem.color_id || currentItem.color_id === 0 || currentItem.qty <= 0) {
       showToast('Заполните все поля позиции', 'error');
-      return;
-    }
-
-    if (!form.recipient_id) {
-      showToast('Выберите получателя', 'error');
       return;
     }
 
@@ -164,7 +159,7 @@ const NewRealizationPage = () => {
     const stockItem = stock.find(s => 
       s.product_id === currentItem.product_id && 
       s.size_code === currentItem.size_code && 
-      parseInt(s.color_id) === currentItem.color_id
+      s.color_id === currentItem.color_id
     );
 
     if (!stockItem) {
@@ -294,10 +289,11 @@ const NewRealizationPage = () => {
   };
 
   // Обработчик изменения цвета
-  const handleColorChange = (value: string) => {
+  const handleColorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const colorId = parseInt(e.target.value);
     setCurrentItem(prev => ({ 
       ...prev, 
-      color_id: parseInt(value) || 0,
+      color_id: colorId,
       qty: 0
     }));
   };
@@ -407,7 +403,7 @@ const NewRealizationPage = () => {
           type="button" 
           onClick={addItem} 
           className="btn text-xs disabled:opacity-50"
-          disabled={!currentItem.product_id || !currentItem.size_code || !currentItem.color_id || (currentItem.qty||0) <= 0 || !form.recipient_id}
+          disabled={!currentItem.product_id || !currentItem.size_code || !currentItem.color_id || currentItem.color_id === 0 || (currentItem.qty||0) <= 0}
         >
           Добавить позицию
         </button>
@@ -449,7 +445,16 @@ const NewRealizationPage = () => {
                 value={articleQuery}
                 onChange={handleArticleChange}
                 onFocus={() => searchArticles(articleQuery)}
-                onBlur={() => setTimeout(() => setShowArticleSuggestions(false), 100)}
+                onBlur={() => {
+                  setTimeout(() => setShowArticleSuggestions(false), 100);
+                  // Дополнительный поиск при потере фокуса
+                  if (articleQuery.trim()) {
+                    const stockItem = stock.find(s => s.article === articleQuery.trim());
+                    if (stockItem && currentItem.product_id !== stockItem.product_id) {
+                      setCurrentItem(prev => ({ ...prev, product_id: stockItem.product_id, size_code: '', color_id: 0, qty: 0 }));
+                    }
+                  }
+                }}
                 className={`block w-full rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 ${
                   articleError ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -531,23 +536,18 @@ const NewRealizationPage = () => {
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Цвет *</label>
               <select
-                value={currentItem.color_id}
-                onChange={(e) => setCurrentItem(prev => ({ ...prev, color_id: parseInt(e.target.value) || 0, qty: 0 }))}
+                value={currentItem.color_id || ''}
+                onChange={handleColorChange}
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
                 required
                 disabled={!currentItem.product_id || !currentItem.size_code}
               >
-                <option value={0}>Выберите цвет</option>
-                {currentItem.product_id && currentItem.size_code ? stock
-                  .filter(s => s.product_id === currentItem.product_id && s.size_code === currentItem.size_code)
-                  .map(s => ({ id: s.color_id, name: s.color_name }))
-                  .filter((value, index, self) => self.findIndex(v => v.id === value.id) === index)
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map(color => (
-                    <option key={color.id} value={color.id}>
-                      {color.name}
-                    </option>
-                  )) : []}
+                <option value="">Выберите цвет</option>
+                {currentItem.product_id && currentItem.size_code ? availableColors.map(color => (
+                  <option key={color.id} value={color.id}>
+                    {color.name}
+                  </option>
+                )) : []}
               </select>
             </div>
 
@@ -565,7 +565,7 @@ const NewRealizationPage = () => {
                 onChange={(e) => setCurrentItem(prev => ({ ...prev, qty: parseInt(e.target.value) || 0 }))}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
                 required
-                disabled={!currentItem.product_id || !currentItem.size_code || !currentItem.color_id}
+                disabled={!currentItem.product_id || !currentItem.size_code || !currentItem.color_id || currentItem.color_id === 0}
                 max={maxQty}
                 placeholder={maxQty > 0 ? `Максимум: ${maxQty}` : ''}
               />

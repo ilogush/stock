@@ -31,6 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           qty,
           size_code,
           product_id,
+          color_id,
           created_at,
           product:products(
             id,
@@ -166,12 +167,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return res.status(500).json({ error: 'Ошибка при получении данных поступлений' });
       }
 
-      // Агрегируем по product_id, size_code, color_id (из products) для всех товаров
+      // Агрегируем по product_id, size_code, color_id (из receipt_items) для всех товаров
       const itemMap: Record<string, any> = {};
       (receiptItems || []).forEach((row: any) => {
         const productId = row.product?.id || row.product_id;
-        const colorId = parseInt(row.product?.color_id) || row.product?.color_id; // Берем color_id из products
-        const key = `${productId}_${row.size_code}_${colorId}`;
+        const colorId = row.color_id ? (parseInt(row.color_id) || row.color_id) : null; // Берем color_id из receipt_items
+        const key = `${productId}_${row.size_code}_${colorId || 'null'}`;
         
         if (!itemMap[key]) {
           itemMap[key] = {
@@ -205,36 +206,37 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .from('realization_items')
           .select(`
             product_id,
+            color_id,
             size_code,
             qty,
-            product:products(color_id, article)
+            product:products(article)
           `)
           .in('product_id', allProductIds);
         realItems = realData || [];
       }
       (realItems||[]).forEach((r:any)=>{
-        const colorId = parseInt(r.product?.color_id) || r.product?.color_id; // Берем color_id из products
-        const key = `${r.product_id}_${r.size_code}_${colorId}`;
+        const colorId = r.color_id ? (parseInt(r.color_id) || r.color_id) : null; // Берем color_id из realization_items
+        const key = `${r.product_id}_${r.size_code}_${colorId || 'null'}`;
         if (itemMap[key] !== undefined) {
           itemMap[key].qty = Math.max(0, itemMap[key].qty - (r.qty||0));
         }
       });
 
-      // НОВЫЙ ФОРМАТ: Группируем по товарам, размеры как столбцы, цвета как строки
-      const productMap: Record<string, any> = {};
+      // ФОРМАТ ДЛЯ ФРОНТЕНДА: Группируем по артикулам, ВСЕ цвета артикула, каждый цвет со всеми размерами
+      const articleMap: Record<string, any> = {};
       const allSizes = new Set<string>();
       
       Object.values(itemMap).forEach((item: any) => {
         if ((item.qty||0) <= 0) return; // не показываем нулевые остатки
         
-        const productId = item.id;
+        const article = item.article;
         allSizes.add(item.size_code);
         
-        if (!productMap[productId]) {
-          productMap[productId] = {
-            id: productId,
+        if (!articleMap[article]) {
+          articleMap[article] = {
+            id: item.id, // Берем первый попавшийся ID для изображений
+            article: article,
             name: item.name,
-            article: item.article,
             brandName: item.brandName,
             colors: {} as Record<string, any>,
             total: 0,
@@ -242,10 +244,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           };
         }
         
-        const entry = productMap[productId];
+        const entry = articleMap[article];
         const colorId = item.color_id;
-        const colorName = codeToName.get(colorId.toString()) || colorId.toString();
+        const colorName = colorId ? (codeToName.get(colorId.toString()) || colorId.toString()) : 'Без цвета';
         
+        // Создаем цвет если его еще нет
         if (!entry.colors[colorId]) {
           entry.colors[colorId] = {
             colorId: colorId,
@@ -255,6 +258,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           };
         }
         
+        // Добавляем размер к цвету
         entry.colors[colorId].sizes[item.size_code] = (entry.colors[colorId].sizes[item.size_code] || 0) + (item.qty || 0);
         entry.colors[colorId].total += (item.qty || 0);
         entry.total += (item.qty || 0);
@@ -267,7 +271,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       // Сортируем размеры
       const sortedSizes = Array.from(allSizes).sort((a, b) => {
-        // Сортируем по размеру (XS, S, M, L, XL, XXL, XXXL)
         const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
         const aIndex = sizeOrder.indexOf(a.toUpperCase());
         const bIndex = sizeOrder.indexOf(b.toUpperCase());
@@ -279,89 +282,41 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       // Преобразуем в массив для отображения
-      const items = Object.values(productMap).map((product: any) => ({
-        ...product,
-        colors: Object.values(product.colors).map((color: any) => ({
+      const items = Object.values(articleMap).map((article: any) => ({
+        ...article,
+        colors: Object.values(article.colors).map((color: any) => ({
           ...color,
           sizes: sortedSizes.map(size => color.sizes[size] || 0)
         }))
       }));
 
-      // Загружаем изображения для всех товаров с соответствующими артикулами
-      const productIds = items.map((product: any) => product.id);
+      // Загружаем изображения для всех товаров
+      const productIds = items.map((item: any) => item.id);
       let imagesByProductId: Record<number, string[]> = {};
-      let productsMap: Record<string, any> = {};
       
       if (productIds.length > 0) {
-        try {
-          // Получаем все артикулы товаров в складе
-          const articleCodes = items.map((product: any) => product.article);
-          
-          // Сначала получаем все товары с нужными артикулами
-          const { data: allProducts, error: productsError } = await supabaseAdmin
-            .from('products')
-            .select('id, article, color_id')
-            .in('article', articleCodes);
-            
-          if (productsError) {
-            console.error('Ошибка загрузки товаров:', productsError);
-          } else {
-            // Создаем карту товаров по артикулу и цвету
-            productsMap = (allProducts || []).reduce((acc: Record<string, any>, product: any) => {
-              const key = `${product.article}_${product.color_id}`;
-              acc[key] = product;
-              return acc;
-            }, {});
-            
-            // Получаем ID всех товаров с нужными артикулами
-            const allProductIds = (allProducts || []).map((p: any) => p.id);
-            
-            // Загружаем изображения для всех этих товаров
-            const { data: allImages, error: imagesError } = await supabaseAdmin
-              .from('product_images')
-              .select('product_id,image_url,created_at')
-              .in('product_id', allProductIds)
-              .order('created_at', { ascending: true });
-
-            if (imagesError) {
-              console.error('Ошибка загрузки изображений:', imagesError);
-            } else {
-              imagesByProductId = (allImages || []).reduce((acc: Record<number, string[]>, row: any) => {
-                const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') || '';
-                const path = row.image_url.startsWith('images/') ? row.image_url : `images/${row.image_url}`;
-                const fullUrl = row.image_url.startsWith('http')
-                  ? row.image_url
-                  : `${base}/storage/v1/object/public/${path}`;
-                if (!acc[row.product_id]) acc[row.product_id] = [];
-                acc[row.product_id].push(fullUrl);
-                return acc;
-              }, {});
-            }
-          }
-        } catch (error) {
-          console.error('Ошибка загрузки изображений:', error);
+        const { data: imagesData } = await supabaseAdmin
+          .from('product_images')
+          .select('product_id, image_url')
+          .in('product_id', productIds);
+        
+        if (imagesData) {
+          imagesByProductId = imagesData.reduce((acc: Record<number, string[]>, img: any) => {
+            if (!acc[img.product_id]) acc[img.product_id] = [];
+            acc[img.product_id].push(img.image_url);
+            return acc;
+          }, {});
         }
       }
 
-      // Загружаем изображения для всех товаров с учетом цветов
-      const itemsWithImages = items.map((product: any) => {
-        return {
-          ...product,
-          colors: product.colors.map((color: any) => {
-            // Ищем товар с соответствующим артикулом и цветом
-            const key = `${product.article}_${color.colorId}`;
-            const matchingProduct = productsMap[key] as any;
-            
-            // Если нашли соответствующий товар, берем его изображения
-            const productImages = matchingProduct ? (imagesByProductId[matchingProduct.id] || []) : [];
-            
-            return {
-              ...color,
-              images: productImages
-            };
-          })
-        };
-      });
+      // Добавляем изображения к позициям
+      const itemsWithImages = items.map((product: any) => ({
+        ...product,
+        colors: product.colors.map((color: any) => ({
+          ...color,
+          images: imagesByProductId[product.id] || []
+        }))
+      }));
 
       // Пагинация отключена для страницы склада
       // Если есть поисковый запрос по артикулу — возвращаем все записи товара

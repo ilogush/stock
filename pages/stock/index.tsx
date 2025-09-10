@@ -19,9 +19,8 @@ type Size = {
 };
 
 type StockProduct = {
-  id: number;
-  name: string;
   article: string;
+  name: string;
   brandName?: string | null;
   colors: Array<{
     colorId: number;
@@ -297,10 +296,10 @@ const StockPage: NextPage = () => {
                 <tbody className="table-body">
                   {items.map((product) => (
                     product.colors.map((color, colorIndex) => (
-                      <tr key={`${product.id}_${color.colorId}`} className="table-row-hover">
+                      <tr key={`${product.article}_${color.colorId}`} className="table-row-hover">
                         <td className="table-cell">
                           <div className="product-image-container relative rounded overflow-hidden bg-gray-100 w-12 h-12">
-                            {color.images?.[0] && !imageErrors.has(`${product.id}_${color.colorId}`) ? (
+                            {color.images?.[0] && !imageErrors.has(`${product.article}_${color.colorId}`) ? (
                               <img
                                 src={color.images[0]}
                                 alt={`${product.name} - ${color.colorName}`}
@@ -309,7 +308,7 @@ const StockPage: NextPage = () => {
                                 className="product-image"
                                 onError={(e) => {
                                   console.error('Ошибка загрузки изображения:', color.images?.[0], e);
-                                  setImageErrors(prev => new Set(prev).add(`${product.id}_${color.colorId}`));
+                                  setImageErrors(prev => new Set(prev).add(`${product.article}_${color.colorId}`));
                                 }}
                               />
                             ) : (

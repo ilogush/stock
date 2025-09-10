@@ -3,8 +3,9 @@ import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 import PageHeader from '../../components/PageHeader';
 import { useToast } from '../../components/ToastContext';
+import { useUserRole } from '../../lib/hooks/useUserRole';
 import { Realization } from '../../types';
-import { PrinterIcon } from '@heroicons/react/24/outline';
+import { PrinterIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface RealizationDetail extends Realization {
   items: RealizationItem[];
@@ -28,9 +29,11 @@ const RealizationDetailPage: NextPage = () => {
   const router = useRouter();
   const { id } = router.query;
   const { showToast } = useToast();
+  const { hasAnyRole } = useUserRole();
 
   const [realization, setRealization] = useState<RealizationDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -70,6 +73,36 @@ const RealizationDetailPage: NextPage = () => {
     window.print();
   };
 
+  const handleDelete = async () => {
+    if (!realization) return;
+    
+    const confirmed = window.confirm(
+      `Вы уверены, что хотите удалить реализацию №${realization.id}?\n\nЭто действие нельзя отменить.`
+    );
+    
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/realization/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка удаления');
+      }
+
+      showToast('Реализация успешно удалена', 'success');
+      router.push('/realization');
+    } catch (error: any) {
+      console.error('Ошибка удаления реализации:', error);
+      showToast(error.message || 'Ошибка удаления реализации', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-32">
@@ -97,7 +130,19 @@ const RealizationDetailPage: NextPage = () => {
           onClick: printDocument,
           icon: <PrinterIcon className="w-4 h-4" />
         }}
-      />
+      >
+        {hasAnyRole(['admin']) && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="btn btn-red text-xs disabled:opacity-50 flex items-center"
+          >
+            <TrashIcon className="w-4 h-4 mr-1" />
+            {deleting ? 'Удаление...' : 'Удалить'}
+          </button>
+        )}
+      </PageHeader>
 
       <div className="space-y-6 print:space-y-4">
         {/* Информация о реализации */}

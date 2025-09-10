@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withAdminOnly } from '../../../lib/api/roleAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -87,6 +88,73 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Серверная ошибка:', error);
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
+  }
+
+  if (req.method === 'DELETE') {
+    return withAdminOnly(async (req, res) => {
+      try {
+        const realizationId = parseInt(id as string);
+        
+        if (isNaN(realizationId)) {
+          return res.status(400).json({ error: 'Неверный ID реализации' });
+        }
+
+        // Проверяем, существует ли реализация
+        const { data: existingRealization, error: checkError } = await supabaseAdmin
+          .from('realization')
+          .select('id')
+          .eq('id', realizationId)
+          .single();
+
+        if (checkError || !existingRealization) {
+          return res.status(404).json({ error: 'Реализация не найдена' });
+        }
+
+        // Получаем время создания реализации для поиска связанных позиций
+        const { data: realizationData, error: realizationDataError } = await supabaseAdmin
+          .from('realization')
+          .select('created_at')
+          .eq('id', realizationId)
+          .single();
+
+        if (realizationDataError || !realizationData) {
+          console.error('Ошибка получения данных реализации:', realizationDataError);
+          return res.status(500).json({ error: 'Ошибка получения данных реализации' });
+        }
+
+        // Удаляем позиции реализации по времени создания (в пределах 1 минуты)
+        const realizationTime = new Date(realizationData.created_at);
+        const timeStart = new Date(realizationTime.getTime() - 60000).toISOString();
+        const timeEnd = new Date(realizationTime.getTime() + 60000).toISOString();
+
+        const { error: itemsError } = await supabaseAdmin
+          .from('realization_items')
+          .delete()
+          .gte('created_at', timeStart)
+          .lte('created_at', timeEnd);
+
+        if (itemsError) {
+          console.error('Ошибка удаления позиций реализации:', itemsError);
+          return res.status(500).json({ error: 'Ошибка удаления позиций реализации' });
+        }
+
+        // Удаляем саму реализацию
+        const { error: realizationError } = await supabaseAdmin
+          .from('realization')
+          .delete()
+          .eq('id', realizationId);
+
+        if (realizationError) {
+          console.error('Ошибка удаления реализации:', realizationError);
+          return res.status(500).json({ error: 'Ошибка удаления реализации' });
+        }
+
+        return res.status(200).json({ message: 'Реализация успешно удалена' });
+      } catch (error) {
+        console.error('Серверная ошибка при удалении реализации:', error);
+        return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+      }
+    })(req, res);
   }
 
   res.status(405).json({ error: 'Метод не поддерживается' });
