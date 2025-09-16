@@ -1,0 +1,78 @@
+{
+  "name": "admin",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "dev:clean": "npm run clear-cache && npm run dev",
+    "dev:fast": "next dev -p 3000 --turbo",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "analyze": "ANALYZE=true npm run build",
+    "analyze:bundle": "npm run build && npx @next/bundle-analyzer .next/static/chunks",
+    "clean": "rm -rf .next out",
+    "clear-cache": "node scripts/clear-cache.js",
+    "clear-all": "node scripts/clear-cache.js --remove-node-modules",
+    "db:check": "node scripts/db.js check",
+    "db:exec": "node scripts/db.js exec",
+    "db:file": "node scripts/db.js file",
+    "optimize": "npm run clean && npm run build",
+    "size": "npm run build && du -sh .next/static/chunks/*.js | sort -hr",
+    "audit": "npm audit --audit-level moderate",
+    "update-deps": "npm update && npm audit fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilogush/lrclyrics.ru.git"
+  },
+  "keywords": [
+    "admin",
+    "dashboard",
+    "warehouse",
+    "management"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ilogush/lrclyrics.ru/issues"
+  },
+  "homepage": "https://github.com/ilogush/lrclyrics.ru#readme",
+  "description": "Admin dashboard for warehouse management system",
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@supabase/supabase-js": "^2.53.0",
+    "@types/pg": "^8.15.5",
+    "bcryptjs": "^3.0.2",
+    "class-variance-authority": "^0.7.1",
+    "cookie": "^1.0.2",
+    "dotenv": "^17.2.2",
+    "formidable": "^3.5.4",
+    "next": "^15.4.5",
+    "pg": "^8.16.3",
+    "puppeteer": "^24.16.2",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^15.4.6",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/formidable": "^3.4.5",
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.32.0",
+    "eslint-config-next": "^15.4.5",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
