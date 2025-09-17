@@ -40,3 +40,4 @@ ANALYZE products;
 ANALYZE colors;
 ANALYZE receipts;
 ANALYZE realization;
+
