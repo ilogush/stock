@@ -5,7 +5,7 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
  * API для получения размеров по категории товара
  * 
  * РАЗМЕРЫ В БАЗЕ ДАННЫХ УЖЕ СОДЕРЖАТ ВОЗРАСТ:
- * - Детские (category_id: 3): "92 (2 года)", "98 (3 года)", "104 (4 года)", "110 (5 лет)", "116 (6 лет)", "122 (7 лет)"
+ * - Детские (category_id: 3): "92 - 2 года", "98 - 3 года", "104 - 4 года", "110 - 5 лет", "116 - 6 лет", "122 - 7 лет", "134 - 8 лет", "140 - 9 лет", "146 - 10 лет", "152 - 11 лет", "158 - 12 лет", "164 - 13 лет"
  * - Мужские/Женские (category_id: 1,2): "XS", "S", "M", "L", "XL", "XXL", "XXXL"
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,7 +27,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data, error } = await supabaseAdmin
           .from('sizes')
           .select('code, created_at')
-          .in('code', ['92 - 2 года', '98 - 3 года', '104 - 4 года', '110 - 5 лет', '116 - 6 лет', '122 - 7 лет'])
+          .in('code', [
+            '92 - 2 года', '98 - 3 года', '104 - 4 года', '110 - 5 лет', '116 - 6 лет', '122 - 7 лет',
+            '134 - 8 лет', '140 - 9 лет', '146 - 10 лет', '152 - 11 лет', '158 - 12 лет', '164 - 13 лет'
+          ])
           .order('code', { ascending: true });
 
         if (error) {
@@ -41,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data, error } = await supabaseAdmin
           .from('sizes')
           .select('code, created_at')
-          .not('code', 'in', '("92 - 2 года","98 - 3 года","104 - 4 года","110 - 5 лет","116 - 6 лет","122 - 7 лет")')
+          .not('code', 'in', '("92 - 2 года","98 - 3 года","104 - 4 года","110 - 5 лет","116 - 6 лет","122 - 7 лет","134 - 8 лет","140 - 9 лет","146 - 10 лет","152 - 11 лет","158 - 12 лет","164 - 13 лет")')
           .order('code', { ascending: true });
 
         if (error) {

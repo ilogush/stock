@@ -269,16 +269,59 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
       });
 
+      // Определяем, является ли категория детской
+      const isChildrenCategory = appliedCategory === '3';
+      
+      // Список детских размеров для фильтрации и сортировки (в правильном порядке)
+      const childrenSizesOrder = [
+        '92', '98', '104', '110', '116', '122', '134', '140', '146', '152', '158', '164'
+      ];
+      
+      // Фильтруем размеры: для детской категории показываем только детские размеры
+      let sizesToShow = Array.from(allSizes);
+      if (isChildrenCategory) {
+        // Для детской категории показываем только детские размеры
+        sizesToShow = sizesToShow.filter(size => {
+          // Извлекаем числовую часть размера (например, "92 - 2 года" -> "92" или просто "92")
+          const sizeNumber = size.split(' ')[0].trim();
+          return childrenSizesOrder.includes(sizeNumber);
+        });
+      } else {
+        // Для взрослых категорий исключаем детские размеры
+        sizesToShow = sizesToShow.filter(size => {
+          const sizeNumber = size.split(' ')[0].trim();
+          return !childrenSizesOrder.includes(sizeNumber);
+        });
+      }
+      
       // Сортируем размеры
-      const sortedSizes = Array.from(allSizes).sort((a, b) => {
-        const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-        const aIndex = sizeOrder.indexOf(a.toUpperCase());
-        const bIndex = sizeOrder.indexOf(b.toUpperCase());
-        
-        if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-        if (aIndex === -1) return 1;
-        if (bIndex === -1) return -1;
-        return aIndex - bIndex;
+      const sortedSizes = sizesToShow.sort((a, b) => {
+        if (isChildrenCategory) {
+          // Для детских размеров сортируем по числовому значению (от 92 до 164)
+          const aNumber = a.split(' ')[0].trim();
+          const bNumber = b.split(' ')[0].trim();
+          const aIndex = childrenSizesOrder.indexOf(aNumber);
+          const bIndex = childrenSizesOrder.indexOf(bNumber);
+          
+          // Если размеры найдены в списке, сортируем по индексу
+          if (aIndex !== -1 && bIndex !== -1) {
+            return aIndex - bIndex;
+          }
+          // Если один из размеров не найден, используем числовое сравнение
+          const aNum = parseInt(aNumber) || 0;
+          const bNum = parseInt(bNumber) || 0;
+          return aNum - bNum;
+        } else {
+          // Для взрослых размеров используем стандартный порядок
+          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+          const aIndex = sizeOrder.indexOf(a.toUpperCase());
+          const bIndex = sizeOrder.indexOf(b.toUpperCase());
+          
+          if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+          if (aIndex === -1) return 1;
+          if (bIndex === -1) return -1;
+          return aIndex - bIndex;
+        }
       });
 
       // Преобразуем в плоский массив строк (каждый цвет = отдельная строка)
@@ -330,26 +373,36 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const endIndex = startIndex + limitNum;
       const paginatedRows = rowsWithImages.slice(startIndex, endIndex);
 
-      // 📏 РАЗМЕРЫ: Определяем размеры только для текущей страницы
-      const usedSizesSet = new Set<string>();
-      paginatedRows.forEach((row: any) => {
-        row.color.sizes.forEach((qty: number, index: number) => {
-          if (qty > 0) {
-            usedSizesSet.add(sortedSizes[index]);
-          }
+      // 📏 РАЗМЕРЫ: Определяем размеры для отображения
+      let pageSizes: string[];
+      
+      if (isChildrenCategory) {
+        // Для детской категории показываем все детские размеры в правильном порядке
+        // (от 92 до 164), даже если на текущей странице нет товаров с этими размерами
+        pageSizes = sortedSizes;
+      } else {
+        // Для взрослых категорий показываем только размеры, которые есть на текущей странице
+        const usedSizesSet = new Set<string>();
+        paginatedRows.forEach((row: any) => {
+          row.color.sizes.forEach((qty: number, index: number) => {
+            if (qty > 0) {
+              usedSizesSet.add(sortedSizes[index]);
+            }
+          });
         });
-      });
+        pageSizes = sortedSizes.filter(size => usedSizesSet.has(size));
+      }
       
-      const pageSizes = sortedSizes.filter(size => usedSizesSet.has(size));
-      
-      // Обновляем размеры в строках - показываем только используемые
+      // Обновляем размеры в строках
       const paginatedRowsFiltered = paginatedRows.map((row: any) => ({
         ...row,
         color: {
           ...row.color,
           sizes: pageSizes.map(size => {
+            // Находим индекс размера в отсортированном списке
             const sizeIndex = sortedSizes.indexOf(size);
-            return row.color.sizes[sizeIndex] || 0;
+            // Возвращаем количество для этого размера, или 0 если размера нет
+            return sizeIndex !== -1 ? (row.color.sizes[sizeIndex] || 0) : 0;
           })
         }
       }));

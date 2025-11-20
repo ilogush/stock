@@ -71,24 +71,28 @@ const NewRealizationPage = () => {
   const [showColorSuggestions, setShowColorSuggestions] = useState(false);
 
   // Подсказки по артикулу (по цифрам/символам) на основе товаров в наличии
-  const searchArticles = (query: string) => {
-    if (!query.trim()) {
+  const searchArticles = (query: string, showAll: boolean = false) => {
+    if (!query.trim() && !showAll) {
       setArticleSuggestions([]);
       setShowArticleSuggestions(false);
       return;
     }
 
-    const suggestions = Array.from(
+    const allArticles = Array.from(
       new Map(stock.map(item => [item.article, {
         article: item.article,
         name: item.name
       }])).values()
-    )
-      .filter(s =>
-        s.article.toLowerCase().includes(query.toLowerCase()) ||
-        s.name.toLowerCase().includes(query.toLowerCase())
-      )
-      .slice(0, 10);
+    );
+
+    const suggestions = showAll || !query.trim()
+      ? allArticles.slice(0, 10)
+      : allArticles
+          .filter(s =>
+            s.article.toLowerCase().includes(query.toLowerCase()) ||
+            s.name.toLowerCase().includes(query.toLowerCase())
+          )
+          .slice(0, 10);
 
     setArticleSuggestions(suggestions);
     setShowArticleSuggestions(suggestions.length > 0);
@@ -151,10 +155,9 @@ const NewRealizationPage = () => {
   }, [articleVariants]);
 
   const availableColors = useMemo(() => {
-    if (!currentItem.size_code) return [];
-
+    // Показываем все цвета артикула, независимо от размера
+    // Это позволяет видеть все доступные цвета, даже если для выбранного размера нет остатков
     const colors = articleVariants
-      .filter((s) => s.size_code === currentItem.size_code)
       .map((s) => ({ id: s.color_id, name: s.color_name }));
 
     const unique: { id: number; name: string }[] = [];
@@ -165,7 +168,7 @@ const NewRealizationPage = () => {
     });
 
     return unique.sort((a, b) => a.name.localeCompare(b.name));
-  }, [articleVariants, currentItem.size_code]);
+  }, [articleVariants]);
 
   const selectedVariant = useMemo(() => (
     articleVariants.find((s) =>
@@ -434,7 +437,13 @@ const NewRealizationPage = () => {
         if (usersData.data?.users) setUsers(usersData.data.users);
         else if (usersData.users) setUsers(usersData.users);
         
-        if (stockData.items) setStock(stockData.items);
+        if (stockData.items) {
+          setStock(stockData.items);
+          console.log('Загружено товаров со склада:', stockData.items.length);
+        } else {
+          console.warn('Данные склада не получены:', stockData);
+          setStock([]);
+        }
         
         if (productsData.data?.products) setProducts(productsData.data.products);
         else if (productsData.products) setProducts(productsData.products);
@@ -533,18 +542,12 @@ const NewRealizationPage = () => {
                 value={articleQuery}
                 onChange={handleArticleChange}
                 onFocus={() => {
-                  searchArticles(articleQuery);
-                  // Показываем все доступные артикулы при фокусе, если поле пустое
-                  if (!articleQuery.trim()) {
-                    const allArticles = Array.from(
-                      new Map(stock.map(item => [item.article, {
-                        article: item.article,
-                        name: item.name
-                      }])).values()
-                    )
-                      .slice(0, 10);
-                    setArticleSuggestions(allArticles);
-                    setShowArticleSuggestions(true);
+                  // Показываем подсказки при фокусе
+                  if (articleQuery.trim()) {
+                    searchArticles(articleQuery);
+                  } else {
+                    // Показываем все доступные артикулы при фокусе, если поле пустое
+                    searchArticles('', true);
                   }
                 }}
                 onBlur={() => {

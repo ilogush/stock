@@ -14,23 +14,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       const codeToName = new Map((colorsData||[]).map((c:any)=>[c.id.toString(), c.name] as const));
 
-      // Получаем данные из поступлений
-      const { data: receiptItems, error } = await supabaseAdmin
-        .from('receipt_items')
-        .select(`product_id,size_code,qty,color_id, product:products(id,name,article)`)
-        .order('product_id, size_code');
-      if (error) {
-        console.error('Ошибка при получении данных поступлений:', error);
-        return res.status(500).json({ error: 'Ошибка при получении данных поступлений' });
+      // Получаем данные из поступлений (получаем все данные порциями)
+      let receiptItems: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: batch, error } = await supabaseAdmin
+          .from('receipt_items')
+          .select(`product_id,size_code,qty,color_id, product:products(id,name,article)`)
+          .order('product_id, size_code')
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          console.error('Ошибка при получении данных поступлений:', error);
+          return res.status(500).json({ error: 'Ошибка при получении данных поступлений' });
+        }
+
+        if (batch && batch.length > 0) {
+          receiptItems = receiptItems.concat(batch);
+          from += pageSize;
+          hasMore = batch.length === pageSize;
+        } else {
+          hasMore = false;
+        }
       }
 
-      // Получаем данные из реализаций
-      const { data: realizationItems, error: realizationError } = await supabaseAdmin
-        .from('realization_items')
-        .select(`product_id,size_code,qty,color_id`);
-      if (realizationError) {
-        console.error('Ошибка при получении данных реализаций:', realizationError);
-        return res.status(500).json({ error: 'Ошибка при получении данных реализаций' });
+      // Получаем данные из реализаций (получаем все данные порциями)
+      let realizationItems: any[] = [];
+      from = 0;
+      hasMore = true;
+
+      while (hasMore) {
+        const { data: batch, error: realizationError } = await supabaseAdmin
+          .from('realization_items')
+          .select(`product_id,size_code,qty,color_id`)
+          .range(from, from + pageSize - 1);
+
+        if (realizationError) {
+          console.error('Ошибка при получении данных реализаций:', realizationError);
+          return res.status(500).json({ error: 'Ошибка при получении данных реализаций' });
+        }
+
+        if (batch && batch.length > 0) {
+          realizationItems = realizationItems.concat(batch);
+          from += pageSize;
+          hasMore = batch.length === pageSize;
+        } else {
+          hasMore = false;
+        }
       }
 
       // Агрегируем поступления
