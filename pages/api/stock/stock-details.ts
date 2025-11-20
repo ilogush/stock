@@ -67,22 +67,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Агрегируем поступления
-      const aggregated: Record<string, {product_id:number; name:string; article:string; size_code:string; color_id:number; qty:number}> = {};
+      const aggregated: Record<string, {product_id:number; name:string; article:string; size_code:string; color_id:number|null; qty:number}> = {};
       (receiptItems||[]).forEach((row:any)=>{
-        const colorId = row.color_id; // Берем color_id из receipt_items
-        const key = `${row.product_id}_${row.size_code}_${colorId}`;
-        if (!aggregated[key]) {
-          aggregated[key] = { product_id: row.product_id, name: row.product?.name||'Неизвестный товар', article: row.product?.article||'', size_code: row.size_code, color_id: colorId, qty: 0 };
+        // Проверяем обязательные поля
+        if (!row.product_id || !row.size_code) {
+          console.warn('Пропущен товар с отсутствующими полями:', { product_id: row.product_id, size_code: row.size_code });
+          return;
         }
-        aggregated[key].qty += row.qty||0;
+        
+        const colorId = row.color_id || null; // Берем color_id из receipt_items, может быть null
+        const key = `${row.product_id}_${row.size_code}_${colorId || 'null'}`;
+        if (!aggregated[key]) {
+          aggregated[key] = { 
+            product_id: row.product_id, 
+            name: row.product?.name || 'Неизвестный товар', 
+            article: row.product?.article || '', 
+            size_code: row.size_code, 
+            color_id: colorId, 
+            qty: 0 
+          };
+        }
+        aggregated[key].qty += (row.qty || 0);
       });
 
       // Вычитаем реализации
       (realizationItems||[]).forEach((row:any)=>{
-        const colorId = row.color_id; // Берем color_id из realization_items
-        const key = `${row.product_id}_${row.size_code}_${colorId}`;
+        // Проверяем обязательные поля
+        if (!row.product_id || !row.size_code) {
+          return; // Пропускаем товары без обязательных полей
+        }
+        
+        const colorId = row.color_id || null; // Берем color_id из realization_items, может быть null
+        const key = `${row.product_id}_${row.size_code}_${colorId || 'null'}`;
         if (aggregated[key] !== undefined) {
-          aggregated[key].qty = Math.max(0, aggregated[key].qty - (row.qty||0));
+          aggregated[key].qty = Math.max(0, aggregated[key].qty - (row.qty || 0));
         }
       });
 
@@ -94,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           article: it.article,
           size_code: it.size_code,
           color_id: it.color_id,
-          color_name: codeToName.get(it.color_id.toString()) || it.color_id.toString(),
+          color_name: it.color_id ? (codeToName.get(it.color_id.toString()) || it.color_id.toString()) : 'Без цвета',
           qty: it.qty,
         }));
 

@@ -418,7 +418,7 @@ const StockPage: NextPage = () => {
                   Итог: <strong>{items.reduce((sum, item) => sum + item.total, 0)}</strong>
                 </span>
                 <span>
-                  Общее количество товаров на складе: <strong>{pagination.total}</strong>
+                  Общее количество позиций: <strong>{pagination.total}</strong>
                 </span>
               </div>
             </div>

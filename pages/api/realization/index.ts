@@ -50,54 +50,129 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const totalPages = Math.ceil((count || 0) / limitNum);
 
-      // Загружаем товары для всех реализаций одним запросом
+      // Загружаем товары для всех реализаций
       let itemsByRealization: Record<number, any[]> = {};
       
       if (filteredItems.length > 0) {
-        // Получаем диапазон дат для всех реализаций с запасом для товаров
-        const dates = filteredItems.map(item => new Date(item.created_at));
-        const minDate = new Date(Math.min(...dates.map(d => d.getTime())) - 10 * 60 * 1000); // -10 минут
-        const maxDate = new Date(Math.max(...dates.map(d => d.getTime())) + 10 * 60 * 1000); // +10 минут
-        
-        // Загружаем товары за расширенный период времени
         const realizationIds = filteredItems.map(item => item.id);
         
-        // Расширяем временной диапазон до ±3 часов от крайних реализаций
-        const expandedMinDate = new Date(minDate.getTime() - 3 * 60 * 60 * 1000); // -3 часа
-        const expandedMaxDate = new Date(maxDate.getTime() + 3 * 60 * 60 * 1000); // +3 часа
-        
-        const { data: allRealizationItems, error: itemsError } = await supabaseAdmin
-          .from('realization_items')
-          .select(`
-            id,
-            product_id,
-            size_code,
-            qty,
-            color_id,
-            created_at,
-            products!realization_items_product_id_fkey(
-              id, 
-              article, 
-              name
-            )
-          `)
-          .gte('created_at', expandedMinDate.toISOString())
-          .lte('created_at', expandedMaxDate.toISOString())
-          .limit(1000);
-        
-        if (allRealizationItems && allRealizationItems.length > 0) {
-          // Связываем товары с реализациями по времени (±2 часа)
-          filteredItems.forEach(realization => {
-            const realizationTime = new Date(realization.created_at).getTime();
-            const timeWindow = 2 * 60 * 60 * 1000; // 2 часа в миллисекундах
+        // Пытаемся использовать realization_id (если колонка существует)
+        let useRealizationId = false;
+        try {
+          const { data: testData, error: testError } = await supabaseAdmin
+            .from('realization_items')
+            .select('realization_id')
+            .limit(1);
+          
+          if (!testError && testData !== null) {
+            useRealizationId = true;
+          }
+        } catch (e) {
+          // Колонка не существует, используем time-based linking
+        }
+
+        let allRealizationItems: any[] = [];
+
+        if (useRealizationId) {
+          // Используем прямой JOIN по realization_id (предпочтительный метод)
+          const { data: itemsData, error: itemsError } = await supabaseAdmin
+            .from('realization_items')
+            .select(`
+              id,
+              product_id,
+              size_code,
+              qty,
+              color_id,
+              created_at,
+              realization_id,
+              products!realization_items_product_id_fkey(
+                id, 
+                article, 
+                name
+              )
+            `)
+            .in('realization_id', realizationIds);
+          
+          if (itemsError) {
+            console.error('Ошибка при получении товаров по realization_id:', itemsError);
+            // Fallback на time-based linking
+            useRealizationId = false;
+          } else {
+            allRealizationItems = itemsData || [];
+          }
+        }
+
+        if (!useRealizationId) {
+          // Fallback: используем time-based linking (старый метод)
+          const dates = filteredItems.map(item => new Date(item.created_at));
+          const minDate = new Date(Math.min(...dates.map(d => d.getTime())) - 10 * 60 * 1000); // -10 минут
+          const maxDate = new Date(Math.max(...dates.map(d => d.getTime())) + 10 * 60 * 1000); // +10 минут
+          
+          // Расширяем временной диапазон до ±3 часов от крайних реализаций
+          const expandedMinDate = new Date(minDate.getTime() - 3 * 60 * 60 * 1000); // -3 часа
+          const expandedMaxDate = new Date(maxDate.getTime() + 3 * 60 * 60 * 1000); // +3 часа
+          
+          // Загружаем все товары за период (без лимита для больших реализаций)
+          let from = 0;
+          const pageSize = 1000;
+          let hasMore = true;
+          
+          while (hasMore) {
+            const { data: batch, error: itemsError } = await supabaseAdmin
+              .from('realization_items')
+              .select(`
+                id,
+                product_id,
+                size_code,
+                qty,
+                color_id,
+                created_at,
+                products!realization_items_product_id_fkey(
+                  id, 
+                  article, 
+                  name
+                )
+              `)
+              .gte('created_at', expandedMinDate.toISOString())
+              .lte('created_at', expandedMaxDate.toISOString())
+              .range(from, from + pageSize - 1);
             
-            const realizationItems = allRealizationItems.filter(item => {
-              const itemTime = new Date(item.created_at).getTime();
-              return Math.abs(itemTime - realizationTime) <= timeWindow;
+            if (itemsError) {
+              console.error('Ошибка при получении товаров:', itemsError);
+              break;
+            }
+            
+            if (batch && batch.length > 0) {
+              allRealizationItems = allRealizationItems.concat(batch);
+              from += pageSize;
+              hasMore = batch.length === pageSize;
+            } else {
+              hasMore = false;
+            }
+          }
+        }
+        
+        if (allRealizationItems.length > 0) {
+          if (useRealizationId) {
+            // Группируем по realization_id
+            filteredItems.forEach(realization => {
+              const realizationItems = allRealizationItems.filter(item => item.realization_id === realization.id);
+              itemsByRealization[realization.id] = realizationItems;
             });
-            
-            itemsByRealization[realization.id] = realizationItems;
-          });
+          } else {
+            // Связываем товары с реализациями по времени (±2 часа)
+            filteredItems.forEach(realization => {
+              const realizationTime = new Date(realization.created_at).getTime();
+              const timeWindow = 2 * 60 * 60 * 1000; // 2 часа в миллисекундах
+              
+              const realizationItems = allRealizationItems.filter(item => {
+                const itemTime = new Date(item.created_at).getTime();
+                return Math.abs(itemTime - realizationTime) <= timeWindow;
+              });
+              
+              itemsByRealization[realization.id] = realizationItems;
+            });
+          }
         }
       }
 

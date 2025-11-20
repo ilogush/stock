@@ -22,27 +22,79 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'Ошибка при получении поступления' });
       }
 
-      // получаем позиции по дате создания поступления
-      // Поскольку нет поля receipt_id, используем временной интервал
-      const receiptDate = new Date(receiptRow.created_at);
-      const startDate = new Date(receiptDate.getTime() - 30000); // -30 секунд
-      const endDate = new Date(receiptDate.getTime() + 30000);   // +30 секунд
+      // Получаем позиции поступления
+      // Пытаемся использовать receipt_id (если колонка существует), иначе используем временной интервал
+      let itemsRows: any[] = [];
+      let useReceiptId = false;
       
-      const { data: itemsRows, error: itemsErr } = await supabaseAdmin
-        .from('receipt_items')
-        .select(`
-          *,
-          product:products!receipt_items_product_id_fkey(
-            id, 
-            name, 
-            article,
-            color_id,
-            brand:brands!products_brand_id_fkey(name),
-            category:categories!products_category_id_fkey(name)
-          )
-        `)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
+      try {
+        const { data: testData, error: testError } = await supabaseAdmin
+          .from('receipt_items')
+          .select('receipt_id')
+          .limit(1);
+        
+        if (!testError && testData !== null) {
+          useReceiptId = true;
+        }
+      } catch (e) {
+        // Колонка не существует, используем time-based linking
+      }
+
+      if (useReceiptId) {
+        // Используем прямой JOIN по receipt_id (предпочтительный метод)
+        const { data: itemsData, error: itemsErr } = await supabaseAdmin
+          .from('receipt_items')
+          .select(`
+            *,
+            product:products!receipt_items_product_id_fkey(
+              id, 
+              name, 
+              article,
+              color_id,
+              brand:brands!products_brand_id_fkey(name),
+              category:categories!products_category_id_fkey(name)
+            )
+          `)
+          .eq('receipt_id', receiptRow.id);
+        
+        if (itemsErr) {
+          console.error('Ошибка при получении позиций по receipt_id:', itemsErr);
+          // Fallback на time-based linking
+          useReceiptId = false;
+        } else {
+          itemsRows = itemsData || [];
+        }
+      }
+
+      if (!useReceiptId) {
+        // Fallback: используем временной интервал (старый метод)
+        const receiptDate = new Date(receiptRow.created_at);
+        const startDate = new Date(receiptDate.getTime() - 30000); // -30 секунд
+        const endDate = new Date(receiptDate.getTime() + 30000);   // +30 секунд
+        
+        const { data: itemsData, error: itemsErr } = await supabaseAdmin
+          .from('receipt_items')
+          .select(`
+            *,
+            product:products!receipt_items_product_id_fkey(
+              id, 
+              name, 
+              article,
+              color_id,
+              brand:brands!products_brand_id_fkey(name),
+              category:categories!products_category_id_fkey(name)
+            )
+          `)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString());
+        
+        if (itemsErr) {
+          console.error('Ошибка при получении позиций:', itemsErr);
+          return res.status(500).json({ error: 'Ошибка при получении позиций' });
+        }
+        
+        itemsRows = itemsData || [];
+      }
 
       if (itemsErr) {
         console.error('Ошибка при получении позиций:', itemsErr);

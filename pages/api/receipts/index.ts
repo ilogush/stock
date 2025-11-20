@@ -50,50 +50,129 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       const totalPages = Math.ceil((count || 0) / limitNum);
 
-      // Загружаем товары для каждого поступления по дате создания
+      // Загружаем товары для каждого поступления
       let itemsByReceipt: Record<number, any[]> = {};
       let totalsByReceipt: Record<number, number> = {};
       
       if (filteredItems.length > 0) {
-        // Получаем диапазон дат для всех поступлений + добавляем буфер
-        const dates = filteredItems.map(item => new Date(item.created_at));
-        const minDate = new Date(Math.min(...dates.map(d => d.getTime())) - 60 * 60 * 1000); // -1 час
-        const maxDate = new Date(Math.max(...dates.map(d => d.getTime())) + 60 * 60 * 1000); // +1 час
+        const receiptIds = filteredItems.map(item => item.id);
         
-        // Загружаем все товары за период одним запросом
-        const { data: allReceiptItems, error: itemsError } = await supabaseAdmin
-          .from('receipt_items')
-          .select(`
-            id,
-            product_id,
-            size_code,
-            qty,
-            color_id,
-            created_at,
-            products!receipt_items_product_id_fkey(
-              id, 
-              article, 
-              name
-            )
-          `)
-          .gte('created_at', minDate.toISOString())
-          .lte('created_at', maxDate.toISOString())
-          .limit(500);
-        
-        if (allReceiptItems && allReceiptItems.length > 0) {
-          // Сопоставляем товары с поступлениями по точному времени (с допуском ±10 минут)
-          filteredItems.forEach(receipt => {
-            const receiptTime = new Date(receipt.created_at).getTime();
-            const timeWindow = 10 * 60 * 1000; // 10 минут в миллисекундах
+        // Пытаемся использовать receipt_id (если колонка существует)
+        // Проверяем наличие колонки через попытку запроса
+        let useReceiptId = false;
+        try {
+          const { data: testData, error: testError } = await supabaseAdmin
+            .from('receipt_items')
+            .select('receipt_id')
+            .limit(1);
+          
+          if (!testError && testData !== null) {
+            useReceiptId = true;
+          }
+        } catch (e) {
+          // Колонка не существует, используем time-based linking
+        }
+
+        let allReceiptItems: any[] = [];
+
+        if (useReceiptId) {
+          // Используем прямой JOIN по receipt_id (предпочтительный метод)
+          const { data: itemsData, error: itemsError } = await supabaseAdmin
+            .from('receipt_items')
+            .select(`
+              id,
+              product_id,
+              size_code,
+              qty,
+              color_id,
+              created_at,
+              receipt_id,
+              products!receipt_items_product_id_fkey(
+                id, 
+                article, 
+                name
+              )
+            `)
+            .in('receipt_id', receiptIds);
+          
+          if (itemsError) {
+            console.error('Ошибка при получении товаров по receipt_id:', itemsError);
+            // Fallback на time-based linking
+            useReceiptId = false;
+          } else {
+            allReceiptItems = itemsData || [];
+          }
+        }
+
+        if (!useReceiptId) {
+          // Fallback: используем time-based linking (старый метод)
+          const dates = filteredItems.map(item => new Date(item.created_at));
+          const minDate = new Date(Math.min(...dates.map(d => d.getTime())) - 60 * 60 * 1000); // -1 час
+          const maxDate = new Date(Math.max(...dates.map(d => d.getTime())) + 60 * 60 * 1000); // +1 час
+          
+          // Загружаем все товары за период (без лимита для больших поступлений)
+          let from = 0;
+          const pageSize = 1000;
+          let hasMore = true;
+          
+          while (hasMore) {
+            const { data: batch, error: itemsError } = await supabaseAdmin
+              .from('receipt_items')
+              .select(`
+                id,
+                product_id,
+                size_code,
+                qty,
+                color_id,
+                created_at,
+                products!receipt_items_product_id_fkey(
+                  id, 
+                  article, 
+                  name
+                )
+              `)
+              .gte('created_at', minDate.toISOString())
+              .lte('created_at', maxDate.toISOString())
+              .range(from, from + pageSize - 1);
             
-            const receiptItems = allReceiptItems.filter(item => {
-              const itemTime = new Date(item.created_at).getTime();
-              return Math.abs(itemTime - receiptTime) <= timeWindow;
+            if (itemsError) {
+              console.error('Ошибка при получении товаров:', itemsError);
+              break;
+            }
+            
+            if (batch && batch.length > 0) {
+              allReceiptItems = allReceiptItems.concat(batch);
+              from += pageSize;
+              hasMore = batch.length === pageSize;
+            } else {
+              hasMore = false;
+            }
+          }
+        }
+        
+        if (allReceiptItems.length > 0) {
+          if (useReceiptId) {
+            // Группируем по receipt_id
+            filteredItems.forEach(receipt => {
+              const receiptItems = allReceiptItems.filter(item => item.receipt_id === receipt.id);
+              itemsByReceipt[receipt.id] = receiptItems;
+              totalsByReceipt[receipt.id] = receiptItems.reduce((sum, item) => sum + (item.qty || 0), 0);
             });
-            
-            itemsByReceipt[receipt.id] = receiptItems;
-            totalsByReceipt[receipt.id] = receiptItems.reduce((sum, item) => sum + (item.qty || 0), 0);
-          });
+          } else {
+            // Сопоставляем товары с поступлениями по точному времени (с допуском ±10 минут)
+            filteredItems.forEach(receipt => {
+              const receiptTime = new Date(receipt.created_at).getTime();
+              const timeWindow = 10 * 60 * 1000; // 10 минут в миллисекундах
+              
+              const receiptItems = allReceiptItems.filter(item => {
+                const itemTime = new Date(item.created_at).getTime();
+                return Math.abs(itemTime - receiptTime) <= timeWindow;
+              });
+              
+              itemsByReceipt[receipt.id] = receiptItems;
+              totalsByReceipt[receipt.id] = receiptItems.reduce((sum, item) => sum + (item.qty || 0), 0);
+            });
+          }
         }
       }
 
