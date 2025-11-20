@@ -3,35 +3,8 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { validateStockForItems } from '../../../lib/stockValidator';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
-
-/**
- * Нормализует размер для поиска в базе данных
- * Обрабатывает проблемы с кодировкой (кириллица vs латиница)
- */
-function normalizeSizeForSearch(sizeCode: string): string[] {
-  const normalized = sizeCode.trim();
-  const variants = [normalized];
-  
-  // Добавляем варианты с разной кодировкой
-  if (normalized === 'М') {
-    variants.push('M'); // латинская M
-  } else if (normalized === 'M') {
-    variants.push('М'); // кириллическая М
-  }
-  
-  // Добавляем варианты с числовыми суффиксами
-  if (normalized.includes('/')) {
-    const baseSize = normalized.split('/')[0];
-    variants.push(baseSize);
-  }
-  
-  // Добавляем варианты для детских размеров
-  if (normalized.match(/^\d+$/)) {
-    variants.push(normalized);
-  }
-  
-  return variants;
-}
+import { normalizeColorId, extractSizeNumber, normalizeSizeCode } from '../../../lib/utils/normalize';
+import { CHILDREN_SIZES, CHILDREN_CATEGORY_ID } from '../../../lib/constants';
 
 export default withPermissions(
   RoleChecks.canCreateRealization,
@@ -48,80 +21,18 @@ export default withPermissions(
     return res.status(400).json({ error: 'recipient_id и items обязательны' });
   }
 
-  // Валидация позиций реализации
+  // Валидация детских размеров для детских товаров
   for (const item of items) {
-    // Получаем варианты размеров для поиска
-    const sizeVariants = normalizeSizeForSearch(item.size_code);
-    let stockItem = null;
-    
-      // Пробуем найти товар с каждым вариантом размера
-      for (const sizeVariant of sizeVariants) {
-        const { data: matches, error } = await supabaseAdmin
-          .from('receipt_items')
-          .select(`
-            product_id, 
-            size_code, 
-            color_id, 
-            qty,
-            products(
-              id, 
-              name, 
-              article, 
-              category_id, 
-              color_id
-            )
-          `)
-          .eq('product_id', item.product_id)
-          .eq('size_code', sizeVariant)
-          .eq('color_id', item.color_id);
+    // Получаем информацию о товаре для проверки категории
+    const { data: product } = await supabaseAdmin
+      .from('products')
+      .select('category_id')
+      .eq('id', item.product_id)
+      .single();
 
-        if (matches && matches.length > 0 && !error) {
-          // Если найдено несколько записей, суммируем количество
-          const totalQty = matches.reduce((sum, match) => sum + (match.qty || 0), 0);
-          stockItem = {
-            ...matches[0],
-            qty: totalQty
-          };
-          
-          if (sizeVariant !== item.size_code.trim()) {
-            console.log(`Найдено соответствие с другим вариантом размера: ${sizeVariant} вместо ${item.size_code}`);
-          }
-          console.log(`Найдено ${matches.length} записей, общее количество: ${totalQty}`);
-          break;
-        }
-      }
-
-    if (!stockItem) {
-      return res.status(400).json({ 
-        error: `Товар с ID ${item.product_id}, размером ${item.size_code} и цветом ${item.color_id} не найден на складе` 
-      });
-    }
-
-    // Проверяем достаточность количества на складе
-    if (stockItem.qty < item.qty) {
-      return res.status(400).json({ 
-        error: `Недостаточно товара на складе. Доступно: ${stockItem.qty}, запрашивается: ${item.qty}` 
-      });
-    }
-
-    const product = stockItem.products;
-
-    // Проверяем цвет: если color_id передан, он должен быть валидным числом
-    if (item.color_id !== null && item.color_id !== undefined && item.color_id !== 0) {
-      const colorId = parseInt(item.color_id);
-      if (isNaN(colorId) || colorId <= 0) {
-        return res.status(400).json({ 
-          error: `Некорректный ID цвета: ${item.color_id}` 
-        });
-      }
-    }
-
-    // Проверяем детские размеры для детских товаров
-    if (product.category_id === 3) { // Детская категория
-      const childrenSizes = ['92', '98', '104', '110', '116', '122', '134', '140', '146', '152', '158', '164'];
-      // Извлекаем числовую часть из размера (например, "98 - 3 года" -> "98")
-      const sizeNumber = item.size_code.split(' ')[0];
-      if (!childrenSizes.includes(sizeNumber)) {
+    if (product?.category_id === CHILDREN_CATEGORY_ID) {
+      const sizeNumber = extractSizeNumber(item.size_code);
+      if (!CHILDREN_SIZES.includes(sizeNumber as any)) {
         return res.status(400).json({ 
           error: `Детские товары должны иметь размеры от 92 до 164, получен: ${item.size_code}` 
         });
@@ -129,19 +40,17 @@ export default withPermissions(
     }
   }
 
-  // Проверяем остатки на складе
-  console.log('realization/create - items to validate:', items);
-  
-  // Нормализуем размеры для валидации (обрезаем до числовой части)
+  // Проверяем остатки на складе (единственная проверка)
+  // Нормализуем размеры для валидации
   const normalizedItems = items.map((item: any) => ({
     ...item,
-    size_code: item.size_code.split(' ')[0] // Приводим к тому же формату, что и в БД
+    size_code: normalizeSizeCode(item.size_code), // Нормализуем размер
+    color_id: normalizeColorId(item.color_id) // Нормализуем цвет
   }));
   
   const stockValidation = await validateStockForItems(normalizedItems);
   
   if (!stockValidation.valid) {
-    console.log('realization/create - stock validation failed:', stockValidation.errors);
     return res.status(400).json({
       error: 'Недостаточно товара на складе',
       details: stockValidation.errors.map(err => err.message),
@@ -172,25 +81,19 @@ export default withPermissions(
       throw insErr;
     }
 
-    // Сохраняем позиции в realization_items с максимальной совместимостью по схеме
+    // Сохраняем позиции в realization_items
     const baseRows = items.map((it: any) => ({
       product_id: parseInt(it.product_id),
-      size_code: it.size_code.split(' ')[0], // Сохраняем только числовую часть размера
-      color_id: it.color_id,
+      size_code: normalizeSizeCode(it.size_code), // Нормализуем размер
+      color_id: normalizeColorId(it.color_id), // Нормализуем цвет
       qty: parseInt(it.qty) || 0,
+      realization_id: shipIns.id // Устанавливаем внешний ключ
     }));
 
     if (baseRows.length > 0) {
-      // Добавляем временную метку для связи товаров с реализацией
-      const realizationTime = new Date().toISOString();
-      const itemsWithTime = baseRows.map(r => ({ 
-        ...r, 
-        created_at: realizationTime 
-      }));
-
       const { error: itemsError } = await supabaseAdmin
         .from('realization_items')
-        .insert(itemsWithTime);
+        .insert(baseRows);
 
       if (itemsError) {
         console.error('Ошибка создания позиций реализации:', itemsError);

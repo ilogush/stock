@@ -244,13 +244,25 @@ export default function NewProduct() {
       const checked = (e.target as HTMLInputElement).checked;
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else {
-      // Валидация артикула - только латинские буквы
+      // Валидация и нормализация артикула
       if (name === 'article') {
         const latinOnly = /^[a-zA-Z0-9\s\-_]*$/;
         if (!latinOnly.test(value)) {
           showToast('Артикул может содержать только латинские буквы, цифры, пробелы, дефисы и подчеркивания', 'error');
           return;
         }
+        
+        // Нормализуем артикул: первая буква должна быть заглавной
+        let normalizedValue = value;
+        if (value.length > 0) {
+          const firstChar = value.charAt(0);
+          if (firstChar >= 'a' && firstChar <= 'z') {
+            normalizedValue = firstChar.toUpperCase() + value.slice(1);
+          }
+        }
+        
+        setFormData(prev => ({ ...prev, [name]: normalizedValue }));
+        return;
       }
       
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -412,7 +424,7 @@ export default function NewProduct() {
               name="brand_id"
               value={formData.brand_id}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               required
             >
               <option value="">Выберите бренд</option>
@@ -433,7 +445,7 @@ export default function NewProduct() {
               name="category_id"
               value={formData.category_id}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               required
             >
               <option value="">Выберите категорию</option>
@@ -454,7 +466,7 @@ export default function NewProduct() {
               name="color_id"
               value={formData.color_id}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               required
             >
               <option value="">Выберите цвет</option>
@@ -476,7 +488,7 @@ export default function NewProduct() {
               name="article"
               value={formData.article}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               placeholder="Только латинские буквы и цифры"
                                     />
                       </div>
@@ -494,7 +506,7 @@ export default function NewProduct() {
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               placeholder="Название товара"
               required
             />
@@ -510,7 +522,7 @@ export default function NewProduct() {
               name="composition"
               value={formData.composition}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               placeholder="Например: 95% хлопок, 5% эластан"
             />
           </div>
@@ -525,7 +537,7 @@ export default function NewProduct() {
               name="price"
               value={formData.price}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               placeholder="0"
               min="0"
               step="0.01"
@@ -542,7 +554,7 @@ export default function NewProduct() {
               name="old_price"
               value={formData.old_price}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               placeholder="0"
               min="0"
               step="0.01"
@@ -560,7 +572,7 @@ export default function NewProduct() {
               name="care_instructions"
               value={formData.care_instructions}
               onChange={handleInputChange}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               placeholder="Описание товара, особенности, характеристики"
               rows={3}
             />

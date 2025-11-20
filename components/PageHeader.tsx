@@ -53,7 +53,7 @@ export default function PageHeader({
         {showBackButton && (
           <button
             onClick={handleBack}
-            className="text-gray-600 hover:text-gray-800"
+            className="text-gray-600 hover:text-gray-800 no-print"
             title="Назад"
           >
             <ArrowLeftIcon className="w-6 h-6" />
@@ -62,14 +62,14 @@ export default function PageHeader({
         <h1 className="text-xl font-bold text-gray-800">{title}</h1>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 no-print">
 
         {/* Кнопка копирования */}
         {copyAction && (
           <button
             onClick={copyAction.onClick}
             disabled={copyAction.disabled}
-            className="btn text-xs flex items-center gap-2 disabled:opacity-50"
+            className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white disabled:opacity-50"
           >
             <DocumentDuplicateIcon className="w-4 h-4" />
             {copyAction.label}
@@ -79,7 +79,7 @@ export default function PageHeader({
         {/* Основная кнопка действия */}
         {action && (
           action.href ? (
-            <Link href={action.href} className="btn text-xs flex items-center gap-2">
+            <Link href={action.href} className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white">
               <PlusIcon className="w-4 h-4" />
               {action.label}
             </Link>
@@ -87,7 +87,10 @@ export default function PageHeader({
             <button
               onClick={action.onClick}
               disabled={action.disabled}
-              className={`btn text-xs flex items-center gap-2 disabled:opacity-50 ${action.label.includes('Печать') ? 'hidden sm:flex' : ''}`}
+              className={`btn text-xs flex items-center hover:bg-gray-800 hover:text-white disabled:opacity-50 ${
+                action.icon && !action.label ? 'justify-center' : 'gap-2'
+              } ${action.label.includes('Печать') || (action.icon && !action.label) ? 'hidden sm:flex' : ''}`}
+              title={action.icon && !action.label ? 'Печать' : undefined}
             >
               {action.icon ? (
                 action.icon
@@ -106,7 +109,7 @@ export default function PageHeader({
           <button
             onClick={deleteAction.onClick}
             disabled={deleteAction.loading}
-            className="btn text-xs flex items-center gap-2 disabled:opacity-50"
+            className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white disabled:opacity-50"
           >
             <XMarkIcon className="w-4 h-4" />
             {deleteAction.loading ? 'Удаление...' : deleteAction.label}

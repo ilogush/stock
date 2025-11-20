@@ -6,6 +6,7 @@ import {
   handleDatabaseError,
   sendErrorResponse
 } from '../../../lib/unified';
+import { DEFAULT_PAGE_SIZE } from '../../../lib/constants';
 
 /**
  * API роут для API поступлений
@@ -13,9 +14,9 @@ import {
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    const { search = '', page = '1', limit = '20' } = req.query;
+    const { search = '', page = '1', limit } = req.query;
     const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+    const limitNum = parseInt(limit as string) || DEFAULT_PAGE_SIZE;
     const offset = (pageNum - 1) * limitNum;
 
     try {
@@ -55,68 +56,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       let totalsByReceipt: Record<number, number> = {};
       
       if (filteredItems.length > 0) {
-        const receiptIds = filteredItems.map(item => item.id);
+        const receiptIds = filteredItems.map(item => item.id).filter(id => id != null);
         
-        // Пытаемся использовать receipt_id (если колонка существует)
-        // Проверяем наличие колонки через попытку запроса
-        let useReceiptId = false;
-        try {
-          const { data: testData, error: testError } = await supabaseAdmin
-            .from('receipt_items')
-            .select('receipt_id')
-            .limit(1);
+        if (receiptIds.length > 0) {
+          // Получаем receipt_items
+          // Сначала пробуем по receipt_id, если колонка существует
+          let allReceiptItems: any[] | null = null;
+          let itemsError: any = null;
           
-          if (!testError && testData !== null) {
-            useReceiptId = true;
-          }
-        } catch (e) {
-          // Колонка не существует, используем time-based linking
-        }
-
-        let allReceiptItems: any[] = [];
-
-        if (useReceiptId) {
-          // Используем прямой JOIN по receipt_id (предпочтительный метод)
-          const { data: itemsData, error: itemsError } = await supabaseAdmin
-            .from('receipt_items')
-            .select(`
-              id,
-              product_id,
-              size_code,
-              qty,
-              color_id,
-              created_at,
-              receipt_id,
-              products!receipt_items_product_id_fkey(
-                id, 
-                article, 
-                name
-              )
-            `)
-            .in('receipt_id', receiptIds);
-          
-          if (itemsError) {
-            console.error('Ошибка при получении товаров по receipt_id:', itemsError);
-            // Fallback на time-based linking
-            useReceiptId = false;
-          } else {
-            allReceiptItems = itemsData || [];
-          }
-        }
-
-        if (!useReceiptId) {
-          // Fallback: используем time-based linking (старый метод)
-          const dates = filteredItems.map(item => new Date(item.created_at));
-          const minDate = new Date(Math.min(...dates.map(d => d.getTime())) - 60 * 60 * 1000); // -1 час
-          const maxDate = new Date(Math.max(...dates.map(d => d.getTime())) + 60 * 60 * 1000); // +1 час
-          
-          // Загружаем все товары за период (без лимита для больших поступлений)
-          let from = 0;
-          const pageSize = 1000;
-          let hasMore = true;
-          
-          while (hasMore) {
-            const { data: batch, error: itemsError } = await supabaseAdmin
+          try {
+            const { data, error } = await supabaseAdmin
               .from('receipt_items')
               .select(`
                 id,
@@ -125,50 +74,90 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 qty,
                 color_id,
                 created_at,
-                products!receipt_items_product_id_fkey(
-                  id, 
-                  article, 
-                  name
-                )
+                receipt_id
               `)
-              .gte('created_at', minDate.toISOString())
-              .lte('created_at', maxDate.toISOString())
-              .range(from, from + pageSize - 1);
+              .in('receipt_id', receiptIds);
             
-            if (itemsError) {
-              console.error('Ошибка при получении товаров:', itemsError);
-              break;
+            allReceiptItems = data;
+            itemsError = error;
+          } catch (e: any) {
+            itemsError = e;
+          }
+          
+          // Если колонка receipt_id не существует, используем связь по времени
+          if (itemsError && (itemsError.code === '42703' || itemsError.message?.includes('receipt_id') || itemsError.message?.includes('does not exist'))) {
+            console.log('Колонка receipt_id не существует, используем связь по времени');
+            allReceiptItems = [];
+            
+            for (const receipt of filteredItems) {
+              const receiptTime = new Date(receipt.created_at);
+              const timeStart = new Date(receiptTime.getTime() - 300000); // минус 5 минут
+              const timeEnd = new Date(receiptTime.getTime() + 300000); // плюс 5 минут
+              
+              const { data: timeBasedItems, error: timeError } = await supabaseAdmin
+                .from('receipt_items')
+                .select(`
+                  id,
+                  product_id,
+                  size_code,
+                  qty,
+                  color_id,
+                  created_at
+                `)
+                .gte('created_at', timeStart.toISOString())
+                .lte('created_at', timeEnd.toISOString());
+              
+              if (!timeError && timeBasedItems) {
+                // Добавляем receipt_id для группировки
+                timeBasedItems.forEach(item => {
+                  (item as any).receipt_id = receipt.id;
+                });
+                allReceiptItems.push(...timeBasedItems);
+              }
             }
+            itemsError = null; // Сбрасываем ошибку, так как данные получены
+          } else if (itemsError) {
+            console.error('Ошибка при получении товаров по receipt_id:', itemsError);
+            // Не возвращаем ошибку, просто продолжаем без товаров
+          }
+        
+          // Затем получаем products отдельно
+          const productIds = new Set<number>();
+          if (allReceiptItems && Array.isArray(allReceiptItems)) {
+            allReceiptItems.forEach(item => {
+              if (item && item.product_id) {
+                productIds.add(item.product_id);
+              }
+            });
+          }
+          
+          let productMap: Record<number, { id: number; article: string; name: string }> = {};
+          if (productIds.size > 0) {
+            const { data: products } = await supabaseAdmin
+              .from('products')
+              .select('id, article, name')
+              .in('id', Array.from(productIds));
             
-            if (batch && batch.length > 0) {
-              allReceiptItems = allReceiptItems.concat(batch);
-              from += pageSize;
-              hasMore = batch.length === pageSize;
-            } else {
-              hasMore = false;
+            if (products) {
+              products.forEach(product => {
+                productMap[product.id] = product;
+              });
             }
           }
-        }
-        
-        if (allReceiptItems.length > 0) {
-          if (useReceiptId) {
-            // Группируем по receipt_id
-            filteredItems.forEach(receipt => {
-              const receiptItems = allReceiptItems.filter(item => item.receipt_id === receipt.id);
-              itemsByReceipt[receipt.id] = receiptItems;
-              totalsByReceipt[receipt.id] = receiptItems.reduce((sum, item) => sum + (item.qty || 0), 0);
+          
+          // Добавляем информацию о продуктах к receipt_items
+          if (allReceiptItems && Array.isArray(allReceiptItems)) {
+            allReceiptItems.forEach(item => {
+              if (item && item.product_id && productMap[item.product_id]) {
+                (item as any).products = productMap[item.product_id];
+              }
             });
-          } else {
-            // Сопоставляем товары с поступлениями по точному времени (с допуском ±10 минут)
+          }
+          
+          // Группируем по receipt_id
+          if (allReceiptItems && Array.isArray(allReceiptItems) && allReceiptItems.length > 0) {
             filteredItems.forEach(receipt => {
-              const receiptTime = new Date(receipt.created_at).getTime();
-              const timeWindow = 10 * 60 * 1000; // 10 минут в миллисекундах
-              
-              const receiptItems = allReceiptItems.filter(item => {
-                const itemTime = new Date(item.created_at).getTime();
-                return Math.abs(itemTime - receiptTime) <= timeWindow;
-              });
-              
+              const receiptItems = allReceiptItems.filter(item => item && item.receipt_id === receipt.id);
               itemsByReceipt[receipt.id] = receiptItems;
               totalsByReceipt[receipt.id] = receiptItems.reduce((sum, item) => sum + (item.qty || 0), 0);
             });

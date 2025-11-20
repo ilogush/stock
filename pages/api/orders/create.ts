@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { validateStockForItems } from '../../../lib/stockValidator';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
+import { normalizeColorId, normalizeSizeCode } from '../../../lib/utils/normalize';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
@@ -17,10 +18,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Проверяем остатки на складе
-      // Нормализуем размеры для валидации (обрезаем до числовой части)
+      // Нормализуем размеры для валидации
       const normalizedItems = items.map((item: any) => ({
         ...item,
-        size_code: item.size_code.split(' ')[0] // Приводим к тому же формату, что и в БД
+        size_code: normalizeSizeCode(item.size_code), // Нормализуем размер
+        color_id: normalizeColorId(item.color_id) // Нормализуем цвет
       }));
       
       const stockValidation = await validateStockForItems(normalizedItems);
@@ -55,8 +57,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const orderItems = items.map((item: any) => ({
         order_id: order.id,
         product_id: item.product_id,
-        size_code: item.size_code.split(' ')[0], // Сохраняем только числовую часть размера
-        color_id: item.color_id,
+        size_code: normalizeSizeCode(item.size_code), // Нормализуем размер
+        color_id: normalizeColorId(item.color_id), // Нормализуем цвет
         qty: item.qty,
         price: item.price || 0
       }));

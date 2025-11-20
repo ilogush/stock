@@ -5,6 +5,7 @@ import { canChangeProductColor } from '../../../lib/warehouseChecker';
 import { normalizeColorName } from '../../../lib/colorNormalizer';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
+import { normalizeArticle } from '../../../lib/utils/normalize';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -144,6 +145,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
 
+      // Нормализуем артикул: первая буква должна быть заглавной
+      const normalizedArticle = normalizeArticle(article);
+
       // Проверяем, можно ли изменить цвет товара
       const currentProduct = await supabaseAdmin
         .from('products')
@@ -157,19 +161,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         if (!colorCheck.canChange) {
           return res.status(400).json({
             error: 'Нельзя изменить цвет товара',
-            details: [colorCheck.reason || 'Товар имеет складские остатки'],
+            details: [colorCheck.reason || 'Товар имеет Склад'],
             stockInfo: colorCheck.stockInfo
           });
         }
       }
 
       // Проверяем, существует ли уже товар с таким артикулом и цветом (исключая текущий товар)
-      if (article && color_id) {
+      if (normalizedArticle && color_id) {
         // Проверяем только товары с указанным цветом
         const result = await supabaseAdmin
           .from('products')
           .select('id, name, article, color_id')
-          .eq('article', article)
+          .eq('article', normalizedArticle)
           .eq('color_id', parseInt(color_id))
           .neq('id', id) // Исключаем текущий товар
           .single();
@@ -189,7 +193,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Обновляем товар только если все обязательные поля заполнены
       const updateData = {
         name: name.trim(),
-        article: article.trim(),
+        article: normalizedArticle,
         brand_id: parseInt(brand_id),
         category_id: parseInt(category_id),
         color_id: parseInt(color_id),
@@ -259,11 +263,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .select('id, qty')
         .eq('product_id', id);
 
-      // Если есть складские остатки, предлагаем альтернативу
+      // Если есть Склад, предлагаем альтернативу
       if (receiptItems && receiptItems.length > 0) {
         const totalStock = receiptItems.reduce((sum: number, item: any) => sum + (item.qty || 0), 0);
         return res.status(400).json({ 
-          error: `Нельзя удалить товар. На складе осталось ${totalStock} шт. Сначала удалите складские остатки или скройте товар.`,
+          error: `Нельзя удалить товар. На складе осталось ${totalStock} шт. Сначала удалите Склад или скройте товар.`,
           stockCount: totalStock,
           hasStock: true
         });

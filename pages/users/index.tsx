@@ -199,13 +199,11 @@ const UsersList: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-gray-800">Пользователи</h1>
-        </div>
-        <div className="flex items-center gap-3">
+      <div className="flex flex-row justify-between items-center gap-4 mb-6 pb-4 border-b border-gray-200">
+        <h1 className="text-xl font-bold text-gray-800">Пользователи</h1>
+        <div className="flex items-center gap-3 no-print">
           {/* Поиск справа от заголовка на десктопе, на отдельной строке на мобильных */}
-          <div className="relative w-full sm:w-64 order-2 sm:order-1">
+          <div className="relative w-auto order-2 sm:order-1 no-print">
             <div className="relative">
               <input
                 type="text"
@@ -230,20 +228,21 @@ const UsersList: NextPage = () => {
               </div>
             </div>
           </div>
-          <Link href="/users/new" className="btn text-xs flex items-center gap-2 order-1 sm:order-2">
+          <Link href="/users/new" className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white order-1 sm:order-2">
                           <PlusIcon className="w-4 h-4" />
             Создать
           </Link>
         </div>
       </div>
       
-                              {loading ? (
-            <div className="text-center py-4">
-              <div className="text-gray-500">Загрузка...</div>
-            </div>
-          ) : (
-        <>
-          <div className="overflow-x-auto">
+      <div className="mt-4 sm:mt-0">
+        {loading ? (
+          <div className="text-center py-4">
+            <div className="text-gray-500">Загрузка...</div>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto mt-4">
             <table className="table-standard">
               <thead>
                 <tr>
@@ -302,8 +301,8 @@ const UsersList: NextPage = () => {
                         const online = timeDiff < 10*60*1000;
                         return (
                           <span className="flex items-center gap-2 text-sm font-medium">
-                            <span className={`h-3 w-3 rounded-full ${online?'bg-green-600':'bg-red-500'}`}></span>
-                            {online? 'active':'offline'}
+                            <span className={`h-3 w-3 rounded-full ${online ? 'bg-green-600' : 'bg-red-500'}`}></span>
+                            {online ? 'active' : 'offline'}
                           </span>
                         );
                       })()}
@@ -333,15 +332,18 @@ const UsersList: NextPage = () => {
           </div>
           
           {/* Пагинатор */}
-          <Paginator
-            total={pagination.total}
-            page={pagination.page}
-            limit={pagination.limit}
-            onPageChange={handlePageChange}
-            onPageSizeChange={(l)=>fetchUsers(1,l, searchQuery)}
-          />
+          <div className="no-print">
+            <Paginator
+              total={pagination.total}
+              page={pagination.page}
+              limit={pagination.limit}
+              onPageChange={handlePageChange}
+              onPageSizeChange={(l)=>fetchUsers(1,l, searchQuery)}
+            />
+          </div>
         </>
       )}
+      </div>
     </div>
   );
 };

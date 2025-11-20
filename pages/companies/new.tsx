@@ -30,11 +30,10 @@ const NewCompanyPage: NextPage = () => {
         const brandsRes = await fetch('/api/brands');
         const brandsData = await brandsRes.json();
         if (brandsRes.ok) {
-          // Показываем только бренды без привязки к компании (доступные для привязки)
-          const availableForSelection = (brandsData.brands || []).filter((brand: AvailableBrand) => 
-            !brand.company_id
-          );
-          setAvailableBrands(availableForSelection);
+          // API возвращает структуру { data: { brands: [...] } }
+          const brands = brandsData.data?.brands || brandsData.brands || [];
+          // Показываем все бренды - их можно перепривязать к другой компании
+          setAvailableBrands(brands);
         }
       } catch (err: any) {
         console.error('Ошибка загрузки брендов:', err);
@@ -63,7 +62,7 @@ const NewCompanyPage: NextPage = () => {
       if (!response.ok) throw new Error(companyData.error || 'Ошибка создания компании');
 
       // Если выбран бренд - привязываем его к созданной компании
-      if (selectedBrandId) {
+      if (selectedBrandId && selectedBrandId !== '') {
         const brandRes = await fetch(`/api/brands/${selectedBrandId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -73,7 +72,9 @@ const NewCompanyPage: NextPage = () => {
         if (!brandRes.ok) {
           const brandError = await brandRes.json();
           console.error('Ошибка привязки бренда:', brandError);
-          // Не показываем ошибку пользователю, так как компания уже создана
+          showToast('Ошибка привязки бренда к компании', 'error');
+        } else {
+          showToast('Бренд успешно привязан к компании', 'success');
         }
       }
 
@@ -156,13 +157,16 @@ const NewCompanyPage: NextPage = () => {
               <select
                 id="brandSelect"
                 value={selectedBrandId}
-                onChange={(e) => setSelectedBrandId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedBrandId(e.target.value);
+                  console.log('Выбран бренд:', e.target.value);
+                }}
                 className="w-full border border-gray-300 rounded-md p-2"
               >
                 <option value="">Без бренда</option>
                 {availableBrands.map((brand) => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
+                  <option key={brand.id} value={String(brand.id)}>
+                    {brand.name}{brand.company_id ? ' (уже привязан)' : ''}
                   </option>
                 ))}
               </select>

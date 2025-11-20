@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { withPerformanceTracking } from '../../../lib/performanceTracker';
+import { ADULT_SIZES } from '../../../lib/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -309,8 +310,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       // Сортируем размеры
       const sortedSizes = Array.from(allSizes).sort((a, b) => {
-        // Сортируем по размеру (XS, S, M, L, XL, XXL, XXXL)
-        const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+        // Сортируем по размеру используя константу
+        const sizeOrder = ADULT_SIZES;
         const aIndex = sizeOrder.indexOf(a.toUpperCase());
         const bIndex = sizeOrder.indexOf(b.toUpperCase());
         

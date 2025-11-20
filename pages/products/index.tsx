@@ -204,18 +204,46 @@ const ProductsPage: NextPage = () => {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data?.categories && Array.isArray(data.categories) ? data.categories : []);
         const mapped = list.map((c: any) => ({ id: c.id, name: c.name }));
-        const preferred = ['Мужское', 'Женское', 'Детское'];
-        mapped.sort((a: Category, b: Category) => {
-          const ai = preferred.indexOf(a.name);
-          const bi = preferred.indexOf(b.name);
+        
+        // Фильтруем только основные категории: женское, мужское, детское
+        const mainCategories = mapped.filter((c: Category) => {
+          const nameLower = c.name.toLowerCase();
+          return nameLower.includes('женск') || nameLower.includes('мужск') || nameLower.includes('детск');
+        });
+        
+        // Сортируем: женское, мужское, детское
+        const preferred = ['женск', 'мужск', 'детск'];
+        mainCategories.sort((a: Category, b: Category) => {
+          const aNameLower = a.name.toLowerCase();
+          const bNameLower = b.name.toLowerCase();
+          const ai = preferred.findIndex(p => aNameLower.includes(p));
+          const bi = preferred.findIndex(p => bNameLower.includes(p));
           if (ai === -1 && bi === -1) return a.name.localeCompare(b.name);
           if (ai === -1) return 1;
           if (bi === -1) return -1;
           return ai - bi;
         });
-        setCategories(mapped);
+        
+        // Если не найдено категорий, используем fallback
+        if (mainCategories.length === 0) {
+          console.warn('Основные категории не найдены, используем fallback');
+          setCategories([
+            { id: 322, name: 'женское' },
+            { id: 323, name: 'мужское' },
+            { id: 3, name: 'детское' }
+          ]);
+        } else {
+          console.log('Загружено категорий:', mainCategories.length, mainCategories);
+          setCategories(mainCategories);
+        }
       } catch (error) {
         console.error('Ошибка загрузки категорий:', error);
+        // Fallback на стандартные категории
+        setCategories([
+          { id: 322, name: 'женское' },
+          { id: 323, name: 'мужское' },
+          { id: 3, name: 'детское' }
+        ]);
       }
     };
     
@@ -256,18 +284,18 @@ const ProductsPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b border-gray-200">
+      <div className="flex flex-row justify-between items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Товары</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 no-print">
           {hasAnyRole(['admin', 'director', 'manager', 'brand_manager', 'storekeeper']) && (
-            <Link href="/products/new" className="btn text-xs flex items-center gap-2">
+            <Link href="/products/new" className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white">
               <PlusIcon className="w-4 h-4" />
               Создать
             </Link>
           )}
           <button
             onClick={() => window.print()}
-            className="btn text-xs flex items-center hidden sm:flex"
+            className="btn text-xs flex items-center justify-center hover:bg-gray-800 hover:text-white hidden sm:flex"
             title="Печать списка"
           >
             <PrinterIcon className="w-4 h-4" />
@@ -276,11 +304,11 @@ const ProductsPage: NextPage = () => {
       </div>
 
       {/* Tabs with search */}
-      <div className="mb-4">
+      <div className="mb-4 mt-4 sm:mt-0">
         <div className="w-full">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <div className="flex gap-2 pb-2 overflow-x-auto -mx-2 px-2" aria-label="Tabs">
-              {[{id:'all',name:'Все'},...categories].map((cat)=>(
+            <div className="flex gap-2 pb-2 overflow-x-auto -mx-2 px-2 no-print" aria-label="Tabs">
+              {[{id:'all',name:'все'},...categories].map((cat)=>(
                 <button
                   key={cat.id}
                   className={`text-xs px-3 py-1 rounded-full border ${
@@ -290,12 +318,12 @@ const ProductsPage: NextPage = () => {
                   }`}
                   onClick={()=>changeCategory(cat.id)}
                 >
-                  {cat.name}
+                  {cat.name.toLowerCase()}
                 </button>
               ))}
             </div>
             
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-auto no-print">
               <div className="relative">
                 <input
                   type="text"
@@ -315,7 +343,7 @@ const ProductsPage: NextPage = () => {
       </div>
 
       {/* Table */}
-      <div className="flex flex-col flex-grow">
+      <div className="flex flex-col flex-grow mt-4">
         <div className="overflow-x-auto flex-grow">
           {loading ? (
             <div className="text-center py-4">
@@ -325,7 +353,7 @@ const ProductsPage: NextPage = () => {
             <table className="table-standard">
               <thead>
                 <tr>
-                  {['Изобр.', 'Бренд', 'Артикул', 'Название', 'Категория', 'Цвет', 'Цена', 'Старая цена', 'Фото', 'Поп', 'На сайт'].map(
+                  {['Изобр.', 'Бренд', 'Артикул', 'Название', 'Категория', 'Цена', 'Цвет', 'Старая цена', 'Фото', 'Поп', 'На сайт'].map(
                     (head) => (
                       <th
                         key={head}
@@ -341,7 +369,7 @@ const ProductsPage: NextPage = () => {
               <tbody className="table-body">
                 {products.map((p) => (
                   <tr key={p.id} className="table-row-hover">
-                    <td className="table-cell">
+                    <td className="table-cell no-print">
                       <div
                         className="product-image-container relative rounded overflow-hidden bg-gray-100 cursor-pointer"
                         onClick={() => {
@@ -374,10 +402,10 @@ const ProductsPage: NextPage = () => {
                     <td className="table-cell-mono">{p.article}</td>
                     <td className="table-cell">{cleanProductName(p.name, p.subcategoryName, p.categoryName)}</td>
                     <td className="table-cell">{p.subcategoryName || p.categoryName || '—'}</td>
-                    <td className="table-cell">{p.colorName || '—'}</td>
                     <td className="table-cell">
                       {p.price ? `${p.price} ₽` : '-'}
                     </td>
+                    <td className="table-cell">{p.colorName || '—'}</td>
                     <td className="table-cell">
                       {p.old_price ? `${p.old_price} ₽` : '-'}
                     </td>
@@ -419,13 +447,15 @@ const ProductsPage: NextPage = () => {
         </div>
 
         {/* Пагинатор */}
-        <Paginator
-          total={pagination.total}
-          page={pagination.page}
-          limit={pagination.limit}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        <div className="no-print">
+          <Paginator
+            total={pagination.total}
+            page={pagination.page}
+            limit={pagination.limit}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </div>
       </div>
 
       <style jsx>{`

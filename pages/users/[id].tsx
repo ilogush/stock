@@ -232,17 +232,17 @@ const EditUser: NextPage = () => {
                 value={form.password || ''}
                 onChange={handleChange}
               />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                onClick={() => setShowPassword(!showPassword)}
+              >
               {showPassword ? (
-                <EyeSlashIcon
-                  className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400"
-                  onClick={() => setShowPassword(false)}
-                />
+                  <EyeSlashIcon className="w-5 h-5" />
               ) : (
-                <EyeIcon
-                  className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-400"
-                  onClick={() => setShowPassword(true)}
-                />
+                  <EyeIcon className="w-5 h-5" />
               )}
+              </button>
             </div>
           </div>
         </div>

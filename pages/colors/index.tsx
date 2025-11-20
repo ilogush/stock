@@ -93,40 +93,15 @@ const ColorsPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-gray-200">
+      <div className="flex flex-row justify-between items-center gap-4 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Управление цветами</h1>
-        <div className="flex items-center gap-3">
-          <div className="relative w-full sm:w-64">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  // Очищаем предыдущий таймер
-                  if (searchTimeout.current) {
-                    clearTimeout(searchTimeout.current);
-                  }
-                  // Добавляем задержку для поиска в реальном времени
-                  searchTimeout.current = setTimeout(() => {
-                    fetchColors(e.target.value);
-                  }, 500);
-                }}
-                className="search-input block w-full pl-10 pr-4"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-          <button 
+        <div className="flex items-center gap-3 no-print">
+            <button
             onClick={() => {
               setEditingColor(null);
               setIsModalOpen(true);
             }}
-            className="btn text-xs flex items-center gap-2"
+            className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white"
           >
                           <PlusIcon className="w-4 h-4" />
             Добавить цвет
@@ -134,31 +109,51 @@ const ColorsPage: NextPage = () => {
         </div>
       </div>
 
-      {/* Табы - на отдельной строке только на мобильных */}
-      <div className="mb-4 sm:mb-0">
-        <div className="flex gap-2 pb-2 overflow-x-auto sm:overflow-visible">
-          <button 
-            className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${activeTab === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'}`} 
-            onClick={() => handleTabChange('all')}
-          >
-            Все
-          </button>
-          <button 
-            className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${activeTab === 'used' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'}`} 
-            onClick={() => handleTabChange('used')}
-          >
-            Используемые
-          </button>
-          <button 
-            className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${activeTab === 'unused' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'}`} 
-            onClick={() => handleTabChange('unused')}
-          >
-            Неиспользуемые
-          </button>
+      {/* Табы с поиском */}
+      <div className="mb-4 mt-4 sm:mt-0">
+        <div className="w-full">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <div className="flex gap-2 pb-2 overflow-x-auto -mx-2 px-2 no-print">
+              <button 
+                className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${activeTab === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'}`} 
+                onClick={() => handleTabChange('all')}
+              >
+                все
+              </button>
+              <button 
+                className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${activeTab === 'used' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'}`} 
+                onClick={() => handleTabChange('used')}
+              >
+                используемые
+              </button>
+              <button 
+                className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${activeTab === 'unused' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-800'}`} 
+                onClick={() => handleTabChange('unused')}
+              >
+                неиспользуемые
+              </button>
+            </div>
+            
+            <div className="relative w-auto no-print">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input block w-full pl-10 pr-4"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col flex-grow">
+      <div className="flex flex-col flex-grow mt-4">
         <div className="overflow-x-auto flex-grow">
           {loading ? (
             <div className="text-center py-4">

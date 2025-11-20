@@ -249,7 +249,7 @@ const ActionsPage: NextPage = () => {
         title="Действия пользователей"
       >
         {/* Поиск справа от заголовка */}
-        <div className="relative w-64">
+        <div className="relative w-auto no-print">
           <input
             type="text"
             value={searchQuery}
@@ -275,7 +275,7 @@ const ActionsPage: NextPage = () => {
         {user?.role_id === 1 && (
           <button
             onClick={handleClearActions}
-            className="btn text-xs flex items-center gap-2"
+            className="btn text-xs flex items-center justify-center hover:bg-gray-800 hover:text-white"
             title="Очистить историю действий"
           >
             <svg 
@@ -291,13 +291,12 @@ const ActionsPage: NextPage = () => {
                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
               />
             </svg>
-            Очистить
           </button>
         )}
         
         <button
           onClick={() => window.print()}
-          className="btn text-xs flex items-center"
+          className="btn text-xs flex items-center hover:bg-gray-800 hover:text-white"
           title="Печать списка"
         >
           <svg 
@@ -317,7 +316,7 @@ const ActionsPage: NextPage = () => {
       </PageHeader>
 
       {/* Table */}
-      <div className="flex flex-col flex-grow">
+      <div className="flex flex-col flex-grow mt-4">
         <div className="overflow-x-auto flex-grow">
           {loading ? (
             <div className="text-center py-4">
@@ -397,13 +396,15 @@ const ActionsPage: NextPage = () => {
         </div>
 
         {/* Пагинатор */}
-        <Paginator
-          total={pagination.total}
-          page={pagination.page}
-          limit={pagination.limit}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        <div className="no-print">
+          <Paginator
+            total={pagination.total}
+            page={pagination.page}
+            limit={pagination.limit}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </div>
       </div>
 
       <style jsx>{`

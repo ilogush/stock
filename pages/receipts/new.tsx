@@ -5,6 +5,7 @@ import { useToast } from '../../components/ToastContext';
 import { useAuth } from '../../components/AuthContext';
 import PageHeader from '../../components/PageHeader';
 import { translateSupabaseError } from '../../lib/supabaseErrorTranslations';
+import { getSizeOrder } from '../../lib/utils/normalize';
 
 
 interface Product {
@@ -507,7 +508,7 @@ const NewReceiptPage: NextPage = () => {
                 onChange={handleArticleChange}
                 onFocus={() => searchArticles(articleQuery)}
                 onBlur={() => setTimeout(() => setShowArticleSuggestions(false), 100)}
-                className={`mt-1 block w-full rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`mt-1 block w-full rounded-md px-3 py-2  ${
                   articleError ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Введите артикул"
@@ -538,7 +539,7 @@ const NewReceiptPage: NextPage = () => {
               <select
                 value={currentItem.size_code}
                 onChange={(e) => handleCurrentItemChange('size_code', e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 "
                 required
               >
                 <option value="">Выберите размер</option>
@@ -547,29 +548,9 @@ const NewReceiptPage: NextPage = () => {
                     // Защита от undefined
                     if (!a || !a.code || !b || !b.code) return 0;
                     
-                    // Функция для получения числового значения размера
-                    const getSizeValue = (sizeName: string) => {
-                      if (!sizeName) return 0;
-                      const name = sizeName.toLowerCase();
-                      
-                      // Буквенные размеры
-                      if (name.includes('xs')) return 1;
-                      if (name.includes('s') && !name.includes('xs')) return 2;
-                      if (name.includes('m') && !name.includes('xl')) return 3;
-                      if (name.includes('l') && !name.includes('xl')) return 4;
-                      if (name.includes('xl') && !name.includes('xxl')) return 5;
-                      if (name.includes('xxl') && !name.includes('xxxl')) return 6;
-                      if (name.includes('xxxl')) return 7;
-                      
-                      // Числовые размеры
-                      const numMatch = sizeName.match(/\d+/);
-                      if (numMatch) return parseInt(numMatch[0]);
-                      
-                      return 0;
-                    };
-                    
-                    const aValue = getSizeValue(a.code);
-                    const bValue = getSizeValue(b.code);
+                    const categoryId = productPreview?.category_id;
+                    const aValue = getSizeOrder(a.code, categoryId);
+                    const bValue = getSizeOrder(b.code, categoryId);
                     return aValue - bValue; // Сортировка от меньшего к большему
                   })
                   .map(size => (
@@ -586,7 +567,7 @@ const NewReceiptPage: NextPage = () => {
               <select
                 value={currentItem.color_id}
                 onChange={(e) => handleCurrentItemChange('color_id', parseInt(e.target.value) || 0)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 "
                 required
               >
                 <option value="">Выберите цвет</option>
@@ -606,7 +587,7 @@ const NewReceiptPage: NextPage = () => {
                 min="1"
                 value={currentItem.quantity || ''}
                 onChange={(e) => handleCurrentItemChange('quantity', parseInt(e.target.value) || 1)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 "
                 required
               />
             </div>
@@ -622,7 +603,7 @@ const NewReceiptPage: NextPage = () => {
                   value={form.transferrer_id}
                   onChange={handleFormChange}
                   name="transferrer_id"
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 "
                   required
                 >
                   <option value="">Выберите пользователя</option>
@@ -643,7 +624,7 @@ const NewReceiptPage: NextPage = () => {
                 value={form.notes}
                 onChange={handleFormChange}
                 rows={3}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 "
                 placeholder="Дополнительная информация о поступлении..."
               />
             </div>
@@ -684,7 +665,7 @@ const NewReceiptPage: NextPage = () => {
                           min="1"
                           value={item.quantity}
                           onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                          className="w-20 rounded border border-gray-300 p-1 text-center focus:border-blue-500 focus:ring-blue-500"
+                          className="w-20 rounded border border-gray-300 p-1 text-center "
                         />
                       </td>
                       <td className="px-3 py-2 text-sm">

@@ -147,17 +147,17 @@ const LoginPage: NextPage = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    className="absolute right-4 flex items-center text-gray-500 hover:text-gray-700"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
                   {showPassword ? (
-                    <EyeSlashIcon
-                      className="w-[18px] h-[18px] absolute right-4 cursor-pointer text-gray-400"
-                      onClick={() => setShowPassword(false)}
-                    />
+                      <EyeSlashIcon className="w-5 h-5" />
                   ) : (
-                    <EyeIcon
-                      className="w-[18px] h-[18px] absolute right-4 cursor-pointer text-gray-400"
-                      onClick={() => setShowPassword(true)}
-                    />
+                      <EyeIcon className="w-5 h-5" />
                   )}
+                  </button>
                 </div>
               </div>
 
@@ -249,17 +249,17 @@ const LoginPage: NextPage = () => {
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                   />
+                  <button
+                    type="button"
+                    className="absolute right-4 flex items-center text-gray-500 hover:text-gray-700"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                  >
                   {showRegPassword ? (
-                    <EyeSlashIcon
-                      className="w-[18px] h-[18px] absolute right-4 cursor-pointer text-gray-400"
-                      onClick={() => setShowRegPassword(false)}
-                    />
+                      <EyeSlashIcon className="w-5 h-5" />
                   ) : (
-                    <EyeIcon
-                      className="w-[18px] h-[18px] absolute right-4 cursor-pointer text-gray-400"
-                      onClick={() => setShowRegPassword(true)}
-                    />
+                      <EyeIcon className="w-5 h-5" />
                   )}
+                  </button>
                 </div>
               </div>
 

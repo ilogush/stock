@@ -195,7 +195,8 @@ export default function OrderView() {
         </div>
         <button
           onClick={() => window.print()}
-          className="btn text-xs flex items-center"
+          className="btn text-xs flex items-center justify-center hover:bg-gray-800 hover:text-white hidden sm:flex"
+          title="Печать"
         >
           <PrinterIcon className="w-4 h-4" />
         </button>

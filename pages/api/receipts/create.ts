@@ -4,6 +4,8 @@ import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../..
 import { withPermissions, RoleChecks, AuthenticatedRequest, logAccess } from '../../../lib/api/roleAuth';
 import { createItemResponse, createErrorResponse } from '../../../lib/api/standardResponse';
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
+import { normalizeColorId, extractSizeNumber, normalizeSizeCode } from '../../../lib/utils/normalize';
+import { CHILDREN_SIZES, CHILDREN_CATEGORY_ID } from '../../../lib/constants';
 
 export default withPermissions(
   RoleChecks.canCreateReceipts,
@@ -32,7 +34,7 @@ export default withPermissions(
       .insert({
         transferrer_id: transferrer_id || null,
         creator_id: created_by || null,
-        notes: notes || '', // если нет такого поля — удалить эту строку
+        notes: notes || ''
       })
       .select()
       .single();
@@ -59,22 +61,14 @@ export default withPermissions(
         });
       }
 
-      // Проверяем цвет: если color_id передан, он должен быть валидным числом
-      if (item.color_id !== null && item.color_id !== undefined && item.color_id !== 0) {
-        const colorId = parseInt(item.color_id);
-        if (isNaN(colorId) || colorId <= 0) {
-          return res.status(400).json({ 
-            error: `Некорректный ID цвета: ${item.color_id}` 
-          });
-        }
-      }
+      // Нормализуем color_id
+      const colorId = normalizeColorId(item.color_id);
+      // color_id может быть null для товаров без цвета
 
       // Проверяем детские размеры для детских товаров
-      if (product.category_id === 3) { // Детская категория
-        const childrenSizes = ['92', '98', '104', '110', '116', '122', '134', '140', '146', '152', '158', '164'];
-        // Извлекаем числовую часть из размера (например, "98 - 3 года" -> "98")
-        const sizeNumber = item.size_code.split(' ')[0];
-        if (!childrenSizes.includes(sizeNumber)) {
+      if (product.category_id === CHILDREN_CATEGORY_ID) {
+        const sizeNumber = extractSizeNumber(item.size_code);
+        if (!CHILDREN_SIZES.includes(sizeNumber as any)) {
           return res.status(400).json({ 
             error: `Детские товары должны иметь размеры от 92 до 164, получен: ${item.size_code}` 
           });
@@ -82,12 +76,13 @@ export default withPermissions(
       }
     }
 
-    // Создаём позиции поступления (только существующие поля!)
+    // Создаём позиции поступления
     const receiptItems = items.map((item: any) => ({
       product_id: item.product_id,
       qty: item.quantity || item.qty || 0,
-      size_code: item.size_code.split(' ')[0], // Сохраняем только числовую часть размера
-      color_id: item.color_id || null
+      size_code: normalizeSizeCode(item.size_code), // Нормализуем размер
+      color_id: normalizeColorId(item.color_id), // Нормализуем цвет
+      receipt_id: receipt.id // Устанавливаем внешний ключ
     }));
 
     const { error: itemsError } = await supabaseAdmin

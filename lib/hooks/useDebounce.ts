@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Хук для дебаунсинга значений
@@ -23,32 +23,41 @@ export function useDebounce<T>(value: T, delay: number): T {
 
 /**
  * Хук для дебаунсинга функции
+ * Использует useRef и useCallback для стабильности функции
  */
 export function useDebouncedCallback<T extends (...args: any[]) => any>(
   callback: T,
   delay: number
 ): T {
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callbackRef = useRef(callback);
 
-  const debouncedCallback = ((...args: any[]) => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
+  // Обновляем ref при изменении callback
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
-    const timer = setTimeout(() => {
-      callback(...args);
-    }, delay);
+  const debouncedCallback = useCallback(
+    ((...args: any[]) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    setDebounceTimer(timer);
-  }) as T;
+      timeoutRef.current = setTimeout(() => {
+        callbackRef.current(...args);
+      }, delay);
+    }) as T,
+    [delay]
+  );
 
+  // Очистка при размонтировании
   useEffect(() => {
     return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
     };
-  }, [debounceTimer]);
+  }, []);
 
   return debouncedCallback;
 } 

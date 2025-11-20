@@ -7,6 +7,7 @@ import { createItemResponse, createErrorResponse } from '../../../lib/api/standa
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
 import { ValidationService } from '../../../lib/validationService';
 import { DatabaseService } from '../../../lib/databaseService';
+import { normalizeArticle } from '../../../lib/utils/normalize';
 
 // Разрешаем создание товаров админам, менеджерам и кладовщикам
 export default withPermissions(
@@ -48,8 +49,11 @@ export default withPermissions(
         return;
       }
 
+      // Нормализуем артикул: первая буква должна быть заглавной
+      const normalizedArticle = normalizeArticle(article);
+
       // Проверяем, существует ли уже товар с таким артикулом и цветом
-      if (article) {
+      if (normalizedArticle) {
         let existingProduct = null;
         let checkError = null;
 
@@ -58,7 +62,7 @@ export default withPermissions(
           const result = await supabaseAdmin
             .from('products')
             .select('id, name, article, color_id')
-            .eq('article', article)
+            .eq('article', normalizedArticle)
             .eq('color_id', color_id)
             .single();
           
@@ -76,7 +80,7 @@ export default withPermissions(
 
         if (existingProduct) {
           return res.status(400).json({ 
-            error: `Товар с артикулом "${article}" и выбранным цветом уже существует. На один артикул и цвет может быть только одна карточка товара.`
+            error: `Товар с артикулом "${normalizedArticle}" и выбранным цветом уже существует. На один артикул и цвет может быть только одна карточка товара.`
           });
         }
       }
@@ -86,7 +90,7 @@ export default withPermissions(
       // Создаем товар только если все обязательные поля заполнены
       const productData = {
         name: name.trim(),
-        article: article.trim(),
+        article: normalizedArticle,
         brand_id: parseInt(brand_id),
         category_id: parseInt(category_id),
         color_id: color_id,

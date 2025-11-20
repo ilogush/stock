@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import type { NextPage } from 'next';
 import { useRouter } from 'next/router';
 
-import { PencilIcon, TrashIcon, EyeIcon, PhotoIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, EyeIcon, PhotoIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import Link from 'next/link';
 import { useToast } from '../../components/ToastContext';
 import { useDebouncedCallback } from '../../lib/hooks/useDebounce';
 import Paginator from '../../components/Paginator';
@@ -131,6 +132,9 @@ const StockPage: NextPage = () => {
   };
 
   useEffect(() => {
+    // Ждем готовности роутера перед доступом к query
+    if (!router.isReady) return;
+
     // Загружаем все справочники без кеширования
     const fetchData = async () => {
       try {
@@ -198,7 +202,7 @@ const StockPage: NextPage = () => {
     }
 
     fetchData();
-  }, [router.query.search, router.query.limit, router.query.page, router.query.category]);
+  }, [router.isReady, router.query.search, router.query.limit, router.query.page, router.query.category]);
 
     // Убираем автоматическое обновление при возврате на страницу - это создает лишние запросы
 
@@ -247,35 +251,16 @@ const StockPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
+      <div className="flex flex-row justify-between items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Склад</h1>
-        <div className="flex items-center gap-3">
-          {/* Улучшенный поиск справа от заголовка */}
-          <div className="relative w-full sm:w-80">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                  title="Очистить поиск"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="flex items-center gap-3 no-print">
+          <Link href="/receipts/new" className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white">
+            <PlusIcon className="w-4 h-4" />
+            Поступление
+          </Link>
           <button
             onClick={() => window.print()}
-            className="btn text-xs flex items-center hidden sm:flex"
+            className="btn text-xs flex items-center hover:bg-gray-800 hover:text-white hidden sm:flex"
             title="Печать списка"
           >
             <svg 
@@ -295,10 +280,10 @@ const StockPage: NextPage = () => {
         </div>
       </div>
       
-      <div className="mb-4">
+      <div className="mb-4 mt-4 sm:mt-0">
         <div className="w-full">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2 pb-2" aria-label="Tabs">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <div className="flex gap-2 pb-2 overflow-x-auto -mx-2 px-2 no-print" aria-label="Tabs">
               {categories.map((cat)=>(
                 <button 
                   key={cat.id} 
@@ -310,18 +295,41 @@ const StockPage: NextPage = () => {
                   onClick={()=>changeCategory(cat.id)}
                   disabled={loading}
                 >
-                  {cat.name}
+                  {cat.name.toLowerCase()}
                   {loading && currentCategory===String(cat.id) && (
                     <span className="ml-1 inline-block w-2 h-2 bg-white rounded-full"></span>
                   )}
                 </button>
               ))}
             </div>
+            
+            <div className="relative w-auto no-print">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input block w-full pl-10 pr-10"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    title="Очистить поиск"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Table */}
-        <div className="flex flex-col flex-grow">
+        <div className="flex flex-col flex-grow mt-4">
           <div className="overflow-x-auto flex-grow">
             {loading ? (
               <div className="text-center py-4">
@@ -331,7 +339,7 @@ const StockPage: NextPage = () => {
               <table className="table-standard">
                 <thead>
                   <tr>
-                    <th className="table-header">Фото</th>
+                    <th className="table-header no-print">Фото</th>
                     <th className="table-header">Бренд</th>
                     <th className="table-header">Артикул</th>
                     <th className="table-header w-60">Название</th>
@@ -347,7 +355,7 @@ const StockPage: NextPage = () => {
                 <tbody className="table-body">
                   {items.map((row, index) => (
                     <tr key={`${row.article}_${row.color.colorId}_${index}`} className="table-row-hover">
-                      <td className="table-cell">
+                      <td className="table-cell no-print">
                         <div className="product-image-container relative rounded overflow-hidden bg-gray-100 w-12 h-12">
                           {row.color.images?.[0] && !imageErrors.has(`${row.article}_${row.color.colorId}`) ? (
                             <img
@@ -390,7 +398,7 @@ const StockPage: NextPage = () => {
                   ))}
                   {items.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={5 + sizes.length} className="text-center p-8 text-gray-500">
+                      <td colSpan={4 + sizes.length + 1} className="text-center p-8 text-gray-500">
                         <div className="flex flex-col items-center space-y-2">
                           <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -426,14 +434,16 @@ const StockPage: NextPage = () => {
 
           {/* Пагинатор */}
           {pagination.total > 0 && (
-            <Paginator
-              total={pagination.total}
-              page={pagination.page}
-              limit={pagination.limit}
-              onPageChange={handlePageChange}
-              onPageSizeChange={handlePageSizeChange}
-              pageSizeOptions={[20, 50, 100]}
-            />
+            <div className="no-print">
+              <Paginator
+                total={pagination.total}
+                page={pagination.page}
+                limit={pagination.limit}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                pageSizeOptions={[20, 50, 100]}
+              />
+            </div>
           )}
         </div>
       </div>

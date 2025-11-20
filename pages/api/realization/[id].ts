@@ -19,32 +19,126 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Реализация не найдена' });
       }
 
-      // Получаем позиции реализации с информацией о товарах
-      const { data: items, error: itemsError } = await supabaseAdmin
+      // Получаем позиции реализации
+      // Сначала пробуем по realization_id, если колонка существует
+      let items: any[] | null = null;
+      let itemsError: any = null;
+      
+      const { data, error } = await supabaseAdmin
         .from('realization_items')
         .select(`
-          *,
-          product:products!realization_items_product_id_fkey(
+          id,
+          product_id,
+          size_code,
+          qty,
+          color_id,
+          created_at,
+          realization_id
+        `)
+        .eq('realization_id', realization.id)
+        .order('created_at');
+      
+      // Если колонка realization_id не существует или товары не найдены, используем связь по времени
+      if (error && (error.code === '42703' || error.message?.includes('realization_id') || error.message?.includes('does not exist'))) {
+        console.log('Колонка realization_id не существует, используем связь по времени');
+        const realizationTime = new Date(realization.created_at);
+        const timeStart = new Date(realizationTime.getTime() - 300000); // минус 5 минут
+        const timeEnd = new Date(realizationTime.getTime() + 300000); // плюс 5 минут
+        
+        const { data: timeBasedItems, error: timeError } = await supabaseAdmin
+          .from('realization_items')
+          .select(`
+            id,
+            product_id,
+            size_code,
+            qty,
+            color_id,
+            created_at
+          `)
+          .gte('created_at', timeStart.toISOString())
+          .lte('created_at', timeEnd.toISOString())
+          .order('created_at');
+        
+        items = timeBasedItems;
+        itemsError = timeError;
+      } else {
+        items = data;
+        itemsError = error;
+      }
+      
+      if (itemsError && itemsError.code !== '42703') {
+        console.error('Ошибка получения позиций реализации:', itemsError);
+        // Не возвращаем ошибку, просто продолжаем без товаров
+      }
+
+      // Затем получаем products отдельно
+      const productIds = new Set<number>();
+      if (items && Array.isArray(items)) {
+        items.forEach(item => {
+          if (item && item.product_id) {
+            productIds.add(item.product_id);
+          }
+        });
+      }
+      
+      let productMap: Record<number, { id: number; name: string; article: string; brand?: { name: string }; category?: { name: string } }> = {};
+      if (productIds.size > 0) {
+        const { data: products, error: productsError } = await supabaseAdmin
+          .from('products')
+          .select(`
             id, 
             name, 
             article,
             color_id,
-            brand:brands!products_brand_id_fkey(name),
-            category:categories!products_category_id_fkey(name)
-          )
-        `)
-        .gte('created_at', new Date(new Date(realization.created_at).getTime() - 60000).toISOString())
-        .lte('created_at', new Date(new Date(realization.created_at).getTime() + 60000).toISOString())
-        .order('created_at');
-
-      if (itemsError) {
-        console.error('Ошибка получения позиций реализации:', itemsError);
-        return res.status(500).json({ error: 'Ошибка получения позиций реализации' });
+            brand_id,
+            category_id
+          `)
+          .in('id', Array.from(productIds));
+        
+        if (!productsError && products) {
+          // Получаем бренды
+          const brandIds = new Set<number>();
+          products.forEach(product => {
+            if (product.brand_id) {
+              brandIds.add(product.brand_id);
+            }
+          });
+          
+          let brandMap: Record<number, { name: string }> = {};
+          if (brandIds.size > 0) {
+            const { data: brands } = await supabaseAdmin
+              .from('brands')
+              .select('id, name')
+              .in('id', Array.from(brandIds));
+            
+            if (brands) {
+              brands.forEach(brand => {
+                brandMap[brand.id] = { name: brand.name };
+              });
+            }
+          }
+          
+          // Формируем productMap
+          products.forEach(product => {
+            productMap[product.id] = {
+              id: product.id,
+              name: product.name,
+              article: product.article,
+              brand: product.brand_id ? brandMap[product.brand_id] : undefined
+            };
+          });
+        }
       }
+      
+      // Объединяем данные
+      const enrichedItems = (items || []).map((item: any) => ({
+        ...item,
+        product: item.product_id && productMap[item.product_id] ? productMap[item.product_id] : null
+      }));
 
       // Оптимизированная загрузка цветов одним запросом
       const colorIds = Array.from(new Set(
-        items?.map((item: any) => item.color_id).filter(Boolean) || []
+        enrichedItems?.map((item: any) => item.color_id).filter(Boolean) || []
       ));
       
       let colorsMap: Record<string, string> = {};
@@ -68,12 +162,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         recipient_name: realization.recipient ? 
           `${realization.recipient.first_name || ''} ${realization.recipient.last_name || ''}`.trim() || realization.recipient.email : 
           'Не указан',
-        items: items?.map((item: any) => ({
+        items: enrichedItems?.map((item: any) => ({
           ...item,
           product_name: item.product?.name || 'Товар не найден',
           article: item.product?.article || '',
           brand_name: item.product?.brand?.name || '',
-          category_name: item.product?.category?.name || '',
           size_name: item.size_code, // Размер уже в правильном формате
           color_name: colorsMap[item.color_id?.toString()] || item.color_id || '—'
         })) || []
@@ -112,28 +205,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(404).json({ error: 'Реализация не найдена' });
         }
 
-        // Получаем время создания реализации для поиска связанных позиций
-        const { data: realizationData, error: realizationDataError } = await supabaseAdmin
-          .from('realization')
-          .select('created_at')
-          .eq('id', realizationId)
-          .single();
-
-        if (realizationDataError || !realizationData) {
-          console.error('Ошибка получения данных реализации:', realizationDataError);
-          return res.status(500).json({ error: 'Ошибка получения данных реализации' });
-        }
-
-        // Удаляем позиции реализации по времени создания (в пределах 1 минуты)
-        const realizationTime = new Date(realizationData.created_at);
-        const timeStart = new Date(realizationTime.getTime() - 60000).toISOString();
-        const timeEnd = new Date(realizationTime.getTime() + 60000).toISOString();
-
+        // Удаляем позиции реализации по realization_id
         const { error: itemsError } = await supabaseAdmin
           .from('realization_items')
           .delete()
-          .gte('created_at', timeStart)
-          .lte('created_at', timeEnd);
+          .eq('realization_id', realizationId);
 
         if (itemsError) {
           console.error('Ошибка удаления позиций реализации:', itemsError);

@@ -97,81 +97,47 @@
   .will-change-opacity {
     will-change: opacity;
   }
-  
-  /* Оптимизация для печати */
-  @media print {
-    /* Скрываем все элементы интерфейса */
-    .no-print,
-    button,
-    .btn,
-    .search-input,
-    nav,
-    header,
-    footer,
-    .sidebar,
-    .topbar,
-    .pagination,
-    .paginator {
-      display: none !important;
-    }
-    
-    /* Скрываем столбец "Фото" при печати страницы склада */
-    .table-standard th:first-child,
-    .table-standard td:first-child {
-      display: none !important;
-    }
-    
-    /* Показываем только таблицы и их содержимое */
-    table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-    }
-    
-    th, td {
-      border: 1px solid #000 !important;
-      padding: 8px !important;
-      text-align: left !important;
-    }
-    
-    th {
-      background-color: #f3f4f6 !important;
-      font-weight: bold !important;
-    }
-    
-    /* Убираем все эффекты и анимации */
-    * {
-      animation: none !important;
-      transition: none !important;
-    }
-    
-    /* Устанавливаем черно-белую печать */
-    * {
-      color: #000 !important;
-      background: #fff !important;
-    }
-    
-    /* Убираем тени и границы */
-    .shadow,
-    .border,
-    .rounded {
-      box-shadow: none !important;
-      border: none !important;
-      border-radius: 0 !important;
-    }
-    
-    /* Скрываем иконки и изображения */
-    svg,
-    img {
-      display: none !important;
-    }
-    
-    /* Убираем отступы у контейнеров */
-    .container,
-    .mx-auto,
-    .px-4,
-    .py-4 {
-      margin: 0 !important;
-      padding: 0 !important;
-    }
+}
+
+/* Класс для скрытия элементов при печати */
+@media print {
+  .no-print {
+    display: none !important;
   }
-} 
+  
+  /* Убираем влияние фиксированных элементов (topbar, sidebar) */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Убираем отступы у main контента */
+  main,
+  main > div,
+  div[class*="ml-"],
+  div[class*="mt-"],
+  div[class*="pt-"],
+  div[class*="pl-"],
+  [class*="pt-20"],
+  [class*="lg:ml-60"],
+  [class*="lg:ml-16"] {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    padding-left: 0 !important;
+  }
+  
+  /* Убираем фиксированные позиции */
+  [class*="fixed"],
+  nav[class*="fixed"],
+  aside[class*="fixed"] {
+    position: static !important;
+  }
+  
+  /* Убираем overflow при печати */
+  .overflow-x-auto,
+  div[class*="overflow"] {
+    overflow: visible !important;
+  }
+  
+}

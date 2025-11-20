@@ -511,11 +511,11 @@ const Dashboard: NextPage = () => {
         </div>
 
         {/* Табы для всех пользователей */}
-        <div className="flex gap-2 pb-2 text-xs">
+        <div className="flex gap-2 pb-2 text-xs no-print">
           {[
-            {key:'current',label:'Текущие'},
-            {key:'closed',label:'Выполненные'},
-            {key:'created',label:'Созданные'}
+            {key:'current',label:'текущие'},
+            {key:'closed',label:'выполненные'},
+            {key:'created',label:'созданные'}
           ].map((t: any) => (
             <button key={t.key} onClick={()=>{setTaskTab(t.key as any); setTaskPage(1);}} className={`px-3 py-1 rounded-full border ${taskTab===t.key?'bg-gray-800 text-white':'bg-gray-100 text-gray-800'}`}>{t.label}</button>
           ))}

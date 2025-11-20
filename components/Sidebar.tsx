@@ -19,7 +19,8 @@ import {
   MegaphoneIcon,
   ClockIcon,
   ArrowDownTrayIcon,
-  SwatchIcon
+  SwatchIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 type MenuItem = { href: string; label: string; icon: any; badge?: string; roles?: string[]; onClick?: () => void };
@@ -34,6 +35,7 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
   const router = useRouter();
   const { user } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRoleId, setUserRoleId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [tasksCount, setTasksCount] = useState(0);
@@ -85,7 +87,10 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
           const rolesData = await rolesResponse.json();
           const rolesArray = Array.isArray(rolesData) ? rolesData : rolesData.roles || [];
           const role = rolesArray.find((r: any) => r.id === user.role_id);
-          setUserRole(role?.name || null);
+          // Нормализуем роль в нижний регистр для корректного сравнения
+          const normalizedRole = typeof role?.name === 'string' ? role.name.trim().toLowerCase() : null;
+          setUserRole(normalizedRole);
+          setUserRoleId(user.role_id);
         }
       }
     } catch (error) {
@@ -158,6 +163,7 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
         { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
         { href: '/realization', label: 'Реализация', icon: TruckIcon },
+        { href: '/reports', label: 'Отчеты', icon: DocumentTextIcon },
         { href: '/colors', label: 'Цвета', icon: SwatchIcon },
         { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined, onClick: handleChatClick }
       ];
@@ -171,20 +177,22 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
         { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
         { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
         { href: '/realization', label: 'Реализация', icon: TruckIcon },
+        { href: '/reports', label: 'Отчеты', icon: DocumentTextIcon },
         { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon },
         { href: '/colors', label: 'Цвета', icon: SwatchIcon },
         { href: '/chat', label: 'Общий чат', icon: ChatBubbleLeftRightIcon, badge: unreadMessages > 0 ? String(unreadMessages) : undefined, onClick: handleChatClick }
       ];
     }
 
-    // Администратор - полный доступ
-    if (userRole === 'admin') {
+    // Администратор - полный доступ (role_id === 1)
+    if (userRoleId === 1 || userRole === 'admin' || userRole === 'администратор') {
       return [
         { href: '/', label: 'Дашборд', icon: PresentationChartLineIcon },
         { href: '/products', label: 'Товары', icon: CubeIcon },
         { href: '/stock', label: 'Склад', icon: ArchiveBoxIcon },
         { href: '/receipts', label: 'Поступления', icon: ArrowDownTrayIcon },
         { href: '/realization', label: 'Реализация', icon: TruckIcon },
+        { href: '/reports', label: 'Отчеты', icon: DocumentTextIcon },
         { href: '/orders', label: 'Заказы', icon: ShoppingCartIcon },
         { href: '/brands', label: 'Бренды', icon: TagIcon },
         { href: '/companies', label: 'Компании', icon: BuildingOffice2Icon },
@@ -226,7 +234,7 @@ export default function Sidebar({ isOpen, setIsOpen, collapsed = false }: Sideba
       )}
       
       {/* Sidebar */}
-              <aside className={`fixed top-0 left-0 z-40 h-screen ${
+              <aside className={`fixed top-0 left-0 z-40 h-screen no-print ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       } bg-white border-r border-gray-200 ${collapsed ? 'w-16' : 'w-60'} lg:translate-x-0`}>
         <div className="h-full px-3 py-4 overflow-y-auto">

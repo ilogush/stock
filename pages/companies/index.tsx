@@ -6,6 +6,7 @@ import { PencilIcon, TrashIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/ou
 import Paginator from '../../components/Paginator';
 import { useToast } from '../../components/ToastContext';
 import { useDebouncedCallback } from '../../lib/hooks/useDebounce';
+import { useAuth } from '../../components/AuthContext';
 
 interface Brand {
   id: number;
@@ -33,10 +34,19 @@ interface Company {
 const CompaniesPage: NextPage = () => {
   const router = useRouter();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });
   const [searchQuery, setSearchQuery] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
+
+  // Проверка прав доступа - только администратор (role_id === 1)
+  useEffect(() => {
+    if (user && user.role_id !== 1) {
+      router.push('/');
+      showToast('Доступ к компаниям разрешен только администраторам', 'error');
+    }
+  }, [user, router, showToast]);
 
   const debouncedSearch = useDebouncedCallback((q: string) => {
     const query: any = { page: '1', limit: String(pagination.limit) };
@@ -112,13 +122,25 @@ const CompaniesPage: NextPage = () => {
     fetchCompanies(1, newLimit, searchQuery);
   };
 
+  // Если пользователь не администратор, не показываем страницу
+  if (user && user.role_id !== 1) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="text-red-500 text-lg font-medium mb-2">Доступ запрещён</div>
+          <div className="text-gray-600">Доступ к компаниям разрешен только администраторам</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
+      <div className="flex flex-row justify-between items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Компании</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 no-print">
           {/* Поиск справа от заголовка */}
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-auto no-print">
             <div className="relative">
               <input
                 type="text"
@@ -133,13 +155,13 @@ const CompaniesPage: NextPage = () => {
               </div>
             </div>
           </div>
-          <Link href="/companies/new" className="btn text-xs flex items-center gap-2">
+          <Link href="/companies/new" className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white">
                           <PlusIcon className="w-4 h-4" />
             Создать
           </Link>
           <button
             onClick={() => window.print()}
-            className="btn text-xs flex items-center hidden sm:flex"
+            className="btn text-xs flex items-center hover:bg-gray-800 hover:text-white hidden sm:flex"
             title="Печать списка"
           >
             <svg 
@@ -159,7 +181,7 @@ const CompaniesPage: NextPage = () => {
         </div>
       </div>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col mt-4">
         <div className="overflow-x-auto">
           <table className="table-standard">
             <thead>
@@ -219,13 +241,15 @@ const CompaniesPage: NextPage = () => {
           </table>
         </div>
         {pagination && pagination.total > 0 && (
-          <Paginator 
-            total={pagination.total} 
-            page={pagination.page} 
-            limit={pagination.limit} 
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
+          <div className="no-print">
+            <Paginator 
+              total={pagination.total} 
+              page={pagination.page} 
+              limit={pagination.limit} 
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
         )}
       </div>
 

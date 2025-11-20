@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 export interface Column<T = any> {
-  key: string;
+  key?: string;
   header: string;
   render?: (value: any, row: T, index: number) => React.ReactNode;
   sortable?: boolean;
@@ -43,7 +43,7 @@ export default function DataTable<T = any>({
   };
 
   const getCellValue = (column: Column<T>, row: T, index: number): React.ReactNode => {
-    const value = row[column.key as keyof T];
+    const value = column.key ? row[column.key as keyof T] : undefined;
     return column.render ? column.render(value, row, index) : String(value || '');
   };
 
@@ -69,9 +69,9 @@ export default function DataTable<T = any>({
         {showHeader && (
           <thead>
             <tr>
-              {columns.map((column) => (
+              {columns.map((column, colIndex) => (
                 <th
-                  key={column.key}
+                  key={column.key || `col-${colIndex}`}
                   className={`table-header ${
                     column.align === 'center' ? 'text-center' : 
                     column.align === 'right' ? 'text-right' : 'text-left'
@@ -90,9 +90,9 @@ export default function DataTable<T = any>({
               className={`table-row-hover ${onRowClick ? 'cursor-pointer' : ''}`}
               onClick={() => onRowClick?.(row)}
             >
-              {columns.map((column) => (
+              {columns.map((column, colIndex) => (
                 <td
-                  key={column.key}
+                  key={column.key || `col-${colIndex}`}
                   className={`table-cell ${
                     column.align === 'center' ? 'text-center' : 
                     column.align === 'right' ? 'text-right' : 'text-left'

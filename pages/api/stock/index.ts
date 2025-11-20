@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { withPerformanceTracking } from '../../../lib/performanceTracker';
+import { normalizeColorId, extractSizeNumber } from '../../../lib/utils/normalize';
+import { CHILDREN_SIZES, CHILDREN_CATEGORY_ID, ADULT_SIZES } from '../../../lib/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -171,7 +173,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const itemMap: Record<string, any> = {};
       (receiptItems || []).forEach((row: any) => {
         const productId = row.product?.id || row.product_id;
-        const colorId = row.color_id ? (parseInt(row.color_id) || row.color_id) : null; // Берем color_id из receipt_items
+        const colorId = normalizeColorId(row.color_id); // Нормализуем color_id
         const key = `${productId}_${row.size_code}_${colorId || 'null'}`;
         
         if (!itemMap[key]) {
@@ -215,7 +217,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         realItems = realData || [];
       }
       (realItems||[]).forEach((r:any)=>{
-        const colorId = r.color_id ? (parseInt(r.color_id) || r.color_id) : null; // Берем color_id из realization_items
+        const colorId = normalizeColorId(r.color_id); // Нормализуем color_id
         const key = `${r.product_id}_${r.size_code}_${colorId || 'null'}`;
         if (itemMap[key] !== undefined) {
           itemMap[key].qty = Math.max(0, itemMap[key].qty - (r.qty||0));
@@ -270,27 +272,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       // Определяем, является ли категория детской
-      const isChildrenCategory = appliedCategory === '3';
-      
-      // Список детских размеров для фильтрации и сортировки (в правильном порядке)
-      const childrenSizesOrder = [
-        '92', '98', '104', '110', '116', '122', '134', '140', '146', '152', '158', '164'
-      ];
+      const isChildrenCategory = appliedCategory === String(CHILDREN_CATEGORY_ID);
       
       // Фильтруем размеры: для детской категории показываем только детские размеры
       let sizesToShow = Array.from(allSizes);
       if (isChildrenCategory) {
         // Для детской категории показываем только детские размеры
         sizesToShow = sizesToShow.filter(size => {
-          // Извлекаем числовую часть размера (например, "92 - 2 года" -> "92" или просто "92")
-          const sizeNumber = size.split(' ')[0].trim();
-          return childrenSizesOrder.includes(sizeNumber);
+          const sizeNumber = extractSizeNumber(size);
+          return CHILDREN_SIZES.includes(sizeNumber as any);
         });
       } else {
         // Для взрослых категорий исключаем детские размеры
         sizesToShow = sizesToShow.filter(size => {
-          const sizeNumber = size.split(' ')[0].trim();
-          return !childrenSizesOrder.includes(sizeNumber);
+          const sizeNumber = extractSizeNumber(size);
+          return !CHILDREN_SIZES.includes(sizeNumber as any);
         });
       }
       
@@ -298,10 +294,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const sortedSizes = sizesToShow.sort((a, b) => {
         if (isChildrenCategory) {
           // Для детских размеров сортируем по числовому значению (от 92 до 164)
-          const aNumber = a.split(' ')[0].trim();
-          const bNumber = b.split(' ')[0].trim();
-          const aIndex = childrenSizesOrder.indexOf(aNumber);
-          const bIndex = childrenSizesOrder.indexOf(bNumber);
+          const aNumber = extractSizeNumber(a);
+          const bNumber = extractSizeNumber(b);
+          const aIndex = CHILDREN_SIZES.indexOf(aNumber as any);
+          const bIndex = CHILDREN_SIZES.indexOf(bNumber as any);
           
           // Если размеры найдены в списке, сортируем по индексу
           if (aIndex !== -1 && bIndex !== -1) {
@@ -313,9 +309,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           return aNum - bNum;
         } else {
           // Для взрослых размеров используем стандартный порядок
-          const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
-          const aIndex = sizeOrder.indexOf(a.toUpperCase());
-          const bIndex = sizeOrder.indexOf(b.toUpperCase());
+          const aIndex = ADULT_SIZES.indexOf(a.toUpperCase() as any);
+          const bIndex = ADULT_SIZES.indexOf(b.toUpperCase() as any);
           
           if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
           if (aIndex === -1) return 1;

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../../components/AuthContext';
 import { useToast } from '../../components/ToastContext';
 import PageHeader from '../../components/PageHeader';
+import { getSizeOrder } from '../../lib/utils/normalize';
 interface ProductStock {
   product_id: number;
   name: string;
@@ -133,25 +134,14 @@ const NewRealizationPage = () => {
   const availableSizes = useMemo(() => {
     const uniqueSizes = Array.from(new Set(articleVariants.map((s) => s.size_code)));
 
-    const getSizeValue = (sizeName: string) => {
-      if (!sizeName) return 0;
-      const name = sizeName.toLowerCase();
-
-      if (name.includes('xs')) return 1;
-      if (name.includes('s') && !name.includes('xs')) return 2;
-      if (name.includes('m') && !name.includes('xl')) return 3;
-      if (name.includes('l') && !name.includes('xl')) return 4;
-      if (name.includes('xl') && !name.includes('xxl')) return 5;
-      if (name.includes('xxl') && !name.includes('xxxl')) return 6;
-      if (name.includes('xxxl')) return 7;
-
-      const numMatch = sizeName.match(/\d+/);
-      if (numMatch) return parseInt(numMatch[0], 10);
-
-      return 0;
-    };
-
-    return uniqueSizes.sort((a, b) => getSizeValue(a) - getSizeValue(b));
+    // Получаем category_id из первого товара (если есть)
+    const categoryId = articleVariants.length > 0 ? articleVariants[0].product_id : undefined;
+    
+    return uniqueSizes.sort((a, b) => {
+      const aValue = getSizeOrder(a, categoryId);
+      const bValue = getSizeOrder(b, categoryId);
+      return aValue - bValue;
+    });
   }, [articleVariants]);
 
   const availableColors = useMemo(() => {
@@ -483,12 +473,12 @@ const NewRealizationPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Кому передали *
+              Получатель*
             </label>
             <select
               value={form.recipient_id}
               onChange={(e) => setForm(prev => ({ ...prev, recipient_id: e.target.value }))}
-              className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 "
               required
             >
               <option value="">Выберите получателя</option>
@@ -505,9 +495,6 @@ const NewRealizationPage = () => {
         <div className="space-y-4">
           <h3 className="text-lg font-medium text-gray-900">
             Добавить товар
-            <span className="text-sm font-normal text-gray-600 ml-2">
-              (всего на складе: {stock.length} позиций, {[...new Set(stock.map(s => s.article))].length} артикулов)
-            </span>
           </h3>
           
           {stock.length === 0 && (
@@ -532,10 +519,7 @@ const NewRealizationPage = () => {
             {/* Артикул */}
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Артикул * 
-                <span className="text-xs text-gray-500 ml-1">
-                  (доступно {[...new Set(stock.map(s => s.article))].length} артикулов)
-                </span>
+                Артикул *
               </label>
               <input
                 type="text"
@@ -562,7 +546,7 @@ const NewRealizationPage = () => {
                     }
                   }
                 }}
-                className={`block w-full rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 ${
+                className={`block w-full rounded-md px-3 py-2  ${
                   articleError ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Начните вводить артикул или название товара..."
@@ -598,7 +582,7 @@ const NewRealizationPage = () => {
                   color_id: 0,
                   qty: 0
                 }))}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 "
                 required
                 disabled={!currentItem.article}
               >
@@ -615,7 +599,7 @@ const NewRealizationPage = () => {
               <select
                 value={currentItem.color_id || ''}
                 onChange={handleColorChange}
-                className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                className="block w-full rounded-md border border-gray-300 px-3 py-2 "
                 required
                 disabled={!currentItem.article || !currentItem.size_code}
               >
@@ -640,7 +624,7 @@ const NewRealizationPage = () => {
                 type="number"
                 value={currentItem.qty || ''}
                 onChange={(e) => setCurrentItem(prev => ({ ...prev, qty: parseInt(e.target.value) || 0 }))}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 "
                 required
                 disabled={!selectedVariant}
                 max={maxQty}
@@ -680,7 +664,7 @@ const NewRealizationPage = () => {
                             min="1"
                             value={item.qty}
                             onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                            className="w-20 rounded border border-gray-300 p-1 text-center focus:border-blue-500 focus:ring-blue-500"
+                            className="w-20 rounded border border-gray-300 p-1 text-center "
                           />
                         </td>
                         <td className="px-3 py-2 text-sm">
@@ -707,18 +691,30 @@ const NewRealizationPage = () => {
                           </button>
                         </td>
                       </tr>
-                      {stock.filter(s => s.article === item.article && s.size_code === item.size_code && s.color_id === item.color_id).map(s => (
-                        <tr key={`${item.id}-stock-${s.product_id}`} className="bg-gray-50 text-xs text-gray-500">
-                          <td colSpan={4} className="px-3 py-1 text-right">На складе:</td>
-                          <td className="px-3 py-1">{s.qty}</td>
-                          <td colSpan={2}></td>
-                        </tr>
-                      ))}
-                      {stock.filter(s => s.article === item.article && s.size_code === item.size_code && s.color_id === item.color_id).length === 0 && (
-                        <tr key={`${item.id}-no-stock`} className="bg-red-50 text-xs text-red-500">
-                          <td colSpan={7} className="px-3 py-1 text-center">Нет в наличии на складе</td>
-                        </tr>
-                      )}
+                      {(() => {
+                        // Находим остаток на складе для конкретного товара (product_id, size_code, color_id)
+                        const stockItem = stock.find(s => 
+                          s.product_id === item.product_id && 
+                          s.size_code === item.size_code && 
+                          s.color_id === item.color_id
+                        );
+                        
+                        if (stockItem) {
+                          return (
+                            <tr key={`${item.id}-stock`} className="bg-gray-50 text-xs text-gray-500">
+                              <td colSpan={4} className="px-3 py-1 text-right">На складе:</td>
+                              <td className="px-3 py-1">{stockItem.qty}</td>
+                              <td colSpan={2}></td>
+                            </tr>
+                          );
+                        } else {
+                          return (
+                            <tr key={`${item.id}-no-stock`} className="bg-red-50 text-xs text-red-500">
+                              <td colSpan={7} className="px-3 py-1 text-center">Нет в наличии на складе</td>
+                            </tr>
+                          );
+                        }
+                      })()}
                     </React.Fragment>
                   ))}
                 </tbody>

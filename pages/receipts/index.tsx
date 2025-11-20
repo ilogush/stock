@@ -159,36 +159,18 @@ const ReceiptsPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b border-gray-200 no-print">
+      <div className="flex flex-row justify-between items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Поступления</h1>
-        <div className="flex items-center gap-2">
-          {/* Поиск - только в десктопной версии */}
-          <div className="hidden md:block">
-            <div className="relative w-64">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="search-input block w-full pl-10 pr-4"
-                />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 no-print">
           {(user && [1,2].includes(user.role_id)) && (
-            <Link href="/receipts/new" className="btn text-xs flex items-center gap-2">
+            <Link href="/receipts/new" className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white">
               <PlusIcon className="w-4 h-4" />
               Создать
             </Link>
           )}
           <button
             onClick={() => window.print()}
-            className="btn text-xs flex items-center hidden sm:flex"
+            className="btn text-xs flex items-center justify-center hover:bg-gray-800 hover:text-white hidden sm:flex"
             title="Печать списка"
           >
             <PrinterIcon className="w-4 h-4" />
@@ -197,16 +179,18 @@ const ReceiptsPage: NextPage = () => {
       </div>
 
       {/* Таблица */}
-      <DataTable
-        data={receipts}
-        columns={columns}
-        loading={loading}
-        emptyMessage="Поступления не найдены"
-      />
+      <div className="mt-4 sm:mt-0">
+        <DataTable
+          data={receipts}
+          columns={columns}
+          loading={loading}
+          emptyMessage="Поступления не найдены"
+        />
+      </div>
 
       {/* Пагинация */}
       {!loading && receipts.length > 0 && (
-        <div className="mt-6">
+        <div className="mt-6 no-print">
           <Paginator
             total={pagination.total}
             page={pagination.page}

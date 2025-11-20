@@ -183,7 +183,11 @@ export default function TaskDetail() {
         backHref="/warehouse"
       >
         {renderActionButtons()}
-        <button className="btn text-xs flex items-center gap-2">
+        <button
+          onClick={() => window.print()}
+          className="btn text-xs flex items-center justify-center hover:bg-gray-800 hover:text-white hidden sm:flex"
+          title="Печать"
+        >
           <PrinterIcon className="w-4 h-4" />
         </button>
       </PageHeader>

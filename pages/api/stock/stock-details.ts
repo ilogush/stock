@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { normalizeColorId } from '../../../lib/utils/normalize';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -75,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return;
         }
         
-        const colorId = row.color_id || null; // Берем color_id из receipt_items, может быть null
+        const colorId = normalizeColorId(row.color_id); // Нормализуем color_id
         const key = `${row.product_id}_${row.size_code}_${colorId || 'null'}`;
         if (!aggregated[key]) {
           aggregated[key] = { 
@@ -97,7 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return; // Пропускаем товары без обязательных полей
         }
         
-        const colorId = row.color_id || null; // Берем color_id из realization_items, может быть null
+        const colorId = normalizeColorId(row.color_id); // Нормализуем color_id
         const key = `${row.product_id}_${row.size_code}_${colorId || 'null'}`;
         if (aggregated[key] !== undefined) {
           aggregated[key].qty = Math.max(0, aggregated[key].qty - (row.qty || 0));

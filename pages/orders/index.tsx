@@ -191,28 +191,12 @@ const OrdersPage: NextPage = () => {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
+      <div className="flex flex-row justify-between items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Заказы</h1>
-        <div className="flex items-center gap-3">
-          {/* Поиск справа от заголовка */}
-          <div className="relative w-full sm:w-64">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input block w-full pl-10 pr-4"
-              />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
+        <div className="flex items-center gap-3 no-print">
           <button
             onClick={() => window.print()}
-            className="btn text-xs flex items-center hidden sm:flex"
+            className="btn text-xs flex items-center hover:bg-gray-800 hover:text-white hidden sm:flex"
             title="Печать списка"
           >
             <svg 
@@ -232,22 +216,42 @@ const OrdersPage: NextPage = () => {
         </div>
       </div>
 
-      {/* Табы статусов - на отдельной строке только на мобильных */}
-      <div className="mb-4 sm:mb-0">
-        <div className="flex gap-2 pb-2 overflow-x-auto sm:overflow-visible">
-          {statusOptions.map((status) => (
-            <button
-              key={status.value}
-              onClick={() => handleStatusFilterChange(status.value)}
-              className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${statusFilter===status.value?'bg-gray-800 text-white':'bg-gray-100 text-gray-800'}`}
-            >
-              {status.label}
-            </button>
-          ))}
+      {/* Табы с поиском */}
+      <div className="mb-4 mt-4 sm:mt-0">
+        <div className="w-full">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <div className="flex gap-2 pb-2 overflow-x-auto -mx-2 px-2">
+              {statusOptions.map((status) => (
+                <button
+                  key={status.value}
+                  onClick={() => handleStatusFilterChange(status.value)}
+                  className={`text-xs px-3 py-1 rounded-full border whitespace-nowrap ${statusFilter===status.value?'bg-gray-800 text-white':'bg-gray-100 text-gray-800'}`}
+                >
+                  {status.label}
+                </button>
+              ))}
+            </div>
+            
+            <div className="relative w-auto no-print">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input block w-full pl-10 pr-4"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col flex-grow">
+      <div className="flex flex-col flex-grow mt-4">
         <div className="overflow-x-auto flex-grow">
           <table className="table-standard">
             <thead>
@@ -320,13 +324,15 @@ const OrdersPage: NextPage = () => {
 
         {/* Пагинатор */}
         {(pagination?.total || 0) > 0 && (
-          <Paginator
-            total={pagination?.total || 0}
-            page={pagination?.page || 1}
-            limit={pagination?.limit || 20}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
+          <div className="no-print">
+            <Paginator
+              total={pagination?.total || 0}
+              page={pagination?.page || 1}
+              limit={pagination?.limit || 20}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
         )}
       </div>
 

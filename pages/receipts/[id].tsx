@@ -192,7 +192,7 @@ const ReceiptDetailPage: NextPage = () => {
         </div>
 
         {/* Информация для печати */}
-        <div className="hidden print:block mt-8 pt-4 border-t border-gray-200 text-xs text-gray-500">
+        <div className="hidden print:hidden mt-8 pt-4 border-t border-gray-200 text-xs text-gray-500 no-print">
           <div className="flex justify-between">
             <div>Дата создания: {formatDate(receipt.received_at)}</div>
             <div>Система Logush</div>

@@ -236,7 +236,7 @@ const NewColorPage: NextPage = () => {
               setColorName(e.target.value);
             }}
             placeholder="например: Малиновый, Небесно-голубой"
-            className="block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 "
             required
           />
         </div>

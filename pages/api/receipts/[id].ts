@@ -23,87 +23,123 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Получаем позиции поступления
-      // Пытаемся использовать receipt_id (если колонка существует), иначе используем временной интервал
-      let itemsRows: any[] = [];
-      let useReceiptId = false;
+      // Сначала пробуем по receipt_id, если колонка существует
+      let itemsRows: any[] | null = null;
+      let itemsErr: any = null;
       
-      try {
-        const { data: testData, error: testError } = await supabaseAdmin
-          .from('receipt_items')
-          .select('receipt_id')
-          .limit(1);
+      const { data, error } = await supabaseAdmin
+        .from('receipt_items')
+        .select(`
+          id,
+          product_id,
+          size_code,
+          qty,
+          color_id,
+          created_at,
+          receipt_id
+        `)
+        .eq('receipt_id', receiptRow.id);
+      
+      // Если колонка receipt_id не существует, используем связь по времени
+      if (error && (error.code === '42703' || error.message?.includes('receipt_id') || error.message?.includes('does not exist'))) {
+        console.log('Колонка receipt_id не существует, используем связь по времени');
+        const receiptTime = new Date(receiptRow.created_at);
+        const timeStart = new Date(receiptTime.getTime() - 300000); // минус 5 минут
+        const timeEnd = new Date(receiptTime.getTime() + 300000); // плюс 5 минут
         
-        if (!testError && testData !== null) {
-          useReceiptId = true;
-        }
-      } catch (e) {
-        // Колонка не существует, используем time-based linking
-      }
-
-      if (useReceiptId) {
-        // Используем прямой JOIN по receipt_id (предпочтительный метод)
-        const { data: itemsData, error: itemsErr } = await supabaseAdmin
-          .from('receipt_items')
-          .select(`
-            *,
-            product:products!receipt_items_product_id_fkey(
-              id, 
-              name, 
-              article,
-              color_id,
-              brand:brands!products_brand_id_fkey(name),
-              category:categories!products_category_id_fkey(name)
-            )
-          `)
-          .eq('receipt_id', receiptRow.id);
-        
-        if (itemsErr) {
-          console.error('Ошибка при получении позиций по receipt_id:', itemsErr);
-          // Fallback на time-based linking
-          useReceiptId = false;
-        } else {
-          itemsRows = itemsData || [];
-        }
-      }
-
-      if (!useReceiptId) {
-        // Fallback: используем временной интервал (старый метод)
-        const receiptDate = new Date(receiptRow.created_at);
-        const startDate = new Date(receiptDate.getTime() - 30000); // -30 секунд
-        const endDate = new Date(receiptDate.getTime() + 30000);   // +30 секунд
-        
-        const { data: itemsData, error: itemsErr } = await supabaseAdmin
+        const { data: timeBasedItems, error: timeError } = await supabaseAdmin
           .from('receipt_items')
           .select(`
-            *,
-            product:products!receipt_items_product_id_fkey(
-              id, 
-              name, 
-              article,
-              color_id,
-              brand:brands!products_brand_id_fkey(name),
-              category:categories!products_category_id_fkey(name)
-            )
+            id,
+            product_id,
+            size_code,
+            qty,
+            color_id,
+            created_at
           `)
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString());
+          .gte('created_at', timeStart.toISOString())
+          .lte('created_at', timeEnd.toISOString());
         
-        if (itemsErr) {
-          console.error('Ошибка при получении позиций:', itemsErr);
-          return res.status(500).json({ error: 'Ошибка при получении позиций' });
-        }
-        
-        itemsRows = itemsData || [];
+        itemsRows = timeBasedItems;
+        itemsErr = timeError;
+      } else {
+        itemsRows = data;
+        itemsErr = error;
       }
-
-      if (itemsErr) {
+      
+      if (itemsErr && itemsErr.code !== '42703') {
         console.error('Ошибка при получении позиций:', itemsErr);
-        return res.status(500).json({ error: 'Ошибка при получении позиций' });
+        // Не возвращаем ошибку, просто продолжаем без товаров
       }
+
+      // Затем получаем products отдельно
+      const productIds = new Set<number>();
+      if (itemsRows && Array.isArray(itemsRows)) {
+        itemsRows.forEach(item => {
+          if (item && item.product_id) {
+            productIds.add(item.product_id);
+          }
+        });
+      }
+      
+      let productMap: Record<number, { id: number; name: string; article: string; brand?: { name: string }; category?: { name: string } }> = {};
+      if (productIds.size > 0) {
+        const { data: products, error: productsError } = await supabaseAdmin
+          .from('products')
+          .select(`
+            id,
+            name,
+            article,
+            color_id,
+            brand_id,
+            category_id
+          `)
+          .in('id', Array.from(productIds));
+        
+        if (!productsError && products) {
+          // Получаем бренды
+          const brandIds = new Set<number>();
+          products.forEach(product => {
+            if (product.brand_id) {
+              brandIds.add(product.brand_id);
+            }
+          });
+          
+          let brandMap: Record<number, { name: string }> = {};
+          if (brandIds.size > 0) {
+            const { data: brands } = await supabaseAdmin
+              .from('brands')
+              .select('id, name')
+              .in('id', Array.from(brandIds));
+            
+            if (brands) {
+              brands.forEach(brand => {
+                brandMap[brand.id] = { name: brand.name };
+              });
+            }
+          }
+          
+          // Формируем productMap
+          products.forEach(product => {
+            productMap[product.id] = {
+              id: product.id,
+              name: product.name,
+              article: product.article,
+              brand: product.brand_id ? brandMap[product.brand_id] : undefined
+            };
+          });
+        }
+      }
+      
+      // Объединяем данные
+      const enrichedItemsRows = (itemsRows || []).map((item: any) => ({
+        ...item,
+        product: item.product_id && productMap[item.product_id] ? productMap[item.product_id] : null
+      }));
 
       // Оптимизированная загрузка цветов одним запросом
       const colorIds = Array.from(new Set(
-        itemsRows?.map((item: any) => item.color_id).filter(Boolean) || []
+        enrichedItemsRows?.map((item: any) => item.color_id).filter(Boolean) || []
       ));
       
       let colorsMap: Record<string, string> = {};
@@ -119,7 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Обогащаем позиции данными
-      const enrichedItems = itemsRows.map((item: any) => ({
+      const enrichedItems = enrichedItemsRows.map((item: any) => ({
         ...item,
         color_name: colorsMap[item.color_id?.toString()] || item.color_id || '—'
       }));

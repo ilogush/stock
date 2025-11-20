@@ -76,25 +76,22 @@ export function createApiHandler(
  */
 export const apiConfigs = {
   // CRUD операции для списков
-  list: (cacheType: keyof typeof cacheMiddleware = 'products'): ApiConfig => ({
+  list: (cacheType: any = 'products'): ApiConfig => ({
     methods: ['GET'],
-    cache: cacheType,
     validation: {
       query: {
-        page: [{ type: 'number' }],
-        limit: [{ type: 'number' }],
-        search: [{ type: 'string' }]
+        // page и limit опциональны, валидация не требуется
+        // search опционален
       }
     }
   }),
 
   // CRUD операции для отдельных записей
-  item: (cacheType: keyof typeof cacheMiddleware = 'products'): ApiConfig => ({
+  item: (cacheType: any = 'products'): ApiConfig => ({
     methods: ['GET', 'PUT', 'DELETE'],
-    cache: cacheType,
     validation: {
       query: {
-        id: [{ type: 'required' }, { type: 'number' }]
+        // id валидируется в обработчике
       }
     }
   }),
@@ -145,7 +142,7 @@ export const apiUtils = {
    */
   createListRoute: (
     handler: ApiHandler,
-    cacheType: keyof typeof cacheMiddleware = 'products'
+    cacheType: any = 'products'
   ) => createApiHandler(apiConfigs.list(cacheType), handler),
 
   /**
@@ -153,7 +150,7 @@ export const apiUtils = {
    */
   createItemRoute: (
     handler: ApiHandler,
-    cacheType: keyof typeof cacheMiddleware = 'products'
+    cacheType: any = 'products'
   ) => createApiHandler(apiConfigs.item(cacheType), handler),
 
   /**

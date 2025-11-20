@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   ChatBubbleLeftRightIcon, 
-  PaperAirplaneIcon
+  PaperAirplaneIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../components/AuthContext';
+import { useToast } from '../components/ToastContext';
 interface ChatMessage {
   id: number;
   user_id: number;
@@ -18,10 +20,12 @@ interface ChatMessage {
 
 export default function Chat() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -126,6 +130,14 @@ export default function Chat() {
         setMessages(prev => [...prev, data.message]);
         setNewMessage('');
         
+        // Сразу обновляем last_read_at, чтобы собственное сообщение не считалось непрочитанным
+        if (user) {
+          const now = new Date().toISOString();
+          localStorage.setItem(`chat_last_read_${user.id}`, now);
+          // Обновляем счетчик непрочитанных сообщений
+          markAsRead();
+        }
+        
         // Сброс высоты поля ввода
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto';
@@ -142,6 +154,39 @@ export default function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  const handleClearChat = async () => {
+    if (!user || user.role_id !== 1) {
+      showToast('Только администратор может очищать чат', 'error');
+      return;
+    }
+
+    if (!confirm('Вы уверены, что хотите очистить весь чат? Это действие нельзя отменить.')) {
+      return;
+    }
+
+    setClearing(true);
+    try {
+      const response = await fetch('/api/chat/clear', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка очистки чата');
+      }
+      
+      showToast('Чат успешно очищен', 'success');
+      setMessages([]);
+    } catch (error: any) {
+      console.error('Ошибка очистки чата:', error);
+      showToast(error.message || 'Ошибка очистки чата', 'error');
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -319,7 +364,7 @@ export default function Chat() {
 
       {/* Поле ввода */}
       <div className="p-4">
-        <div className="flex items-end space-x-3">
+        <div className="flex items-center space-x-3">
           {/* Поле ввода */}
           <div className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
             <textarea
@@ -346,6 +391,22 @@ export default function Chat() {
           >
             <PaperAirplaneIcon className="w-5 h-5" />
           </button>
+          
+          {/* Кнопка очистки (только для админа) */}
+          {user && user.role_id === 1 && (
+            <button
+              onClick={handleClearChat}
+              disabled={clearing}
+              className={`p-3 rounded-full ${
+                clearing
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-800'
+              }`}
+              title="Очистить чат"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

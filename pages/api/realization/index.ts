@@ -6,6 +6,7 @@ import {
   handleDatabaseError,
   sendErrorResponse
 } from '../../../lib/unified';
+import { DEFAULT_PAGE_SIZE } from '../../../lib/constants';
 
 /**
  * API роут для API реализации
@@ -13,9 +14,9 @@ import {
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    const { search = '', page = '1', limit = '20' } = req.query;
+    const { search = '', page = '1', limit } = req.query;
     const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+    const limitNum = parseInt(limit as string) || DEFAULT_PAGE_SIZE;
     const offset = (pageNum - 1) * limitNum;
 
     try {
@@ -56,26 +57,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (filteredItems.length > 0) {
         const realizationIds = filteredItems.map(item => item.id);
         
-        // Пытаемся использовать realization_id (если колонка существует)
-        let useRealizationId = false;
+        // Получаем realization_items
+        // Сначала пробуем по realization_id, если колонка существует
+        let allRealizationItems: any[] | null = null;
+        let itemsError: any = null;
+        
         try {
-          const { data: testData, error: testError } = await supabaseAdmin
-            .from('realization_items')
-            .select('realization_id')
-            .limit(1);
-          
-          if (!testError && testData !== null) {
-            useRealizationId = true;
-          }
-        } catch (e) {
-          // Колонка не существует, используем time-based linking
-        }
-
-        let allRealizationItems: any[] = [];
-
-        if (useRealizationId) {
-          // Используем прямой JOIN по realization_id (предпочтительный метод)
-          const { data: itemsData, error: itemsError } = await supabaseAdmin
+          const { data, error } = await supabaseAdmin
             .from('realization_items')
             .select(`
               id,
@@ -84,41 +72,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               qty,
               color_id,
               created_at,
-              realization_id,
-              products!realization_items_product_id_fkey(
-                id, 
-                article, 
-                name
-              )
+              realization_id
             `)
             .in('realization_id', realizationIds);
           
-          if (itemsError) {
-            console.error('Ошибка при получении товаров по realization_id:', itemsError);
-            // Fallback на time-based linking
-            useRealizationId = false;
-          } else {
-            allRealizationItems = itemsData || [];
-          }
+          allRealizationItems = data;
+          itemsError = error;
+        } catch (e: any) {
+          itemsError = e;
         }
-
-        if (!useRealizationId) {
-          // Fallback: используем time-based linking (старый метод)
-          const dates = filteredItems.map(item => new Date(item.created_at));
-          const minDate = new Date(Math.min(...dates.map(d => d.getTime())) - 10 * 60 * 1000); // -10 минут
-          const maxDate = new Date(Math.max(...dates.map(d => d.getTime())) + 10 * 60 * 1000); // +10 минут
+        
+        // Если колонка realization_id не существует, используем связь по времени
+        if (itemsError && (itemsError.code === '42703' || itemsError.message?.includes('realization_id') || itemsError.message?.includes('does not exist'))) {
+          console.log('Колонка realization_id не существует, используем связь по времени');
+          allRealizationItems = [];
           
-          // Расширяем временной диапазон до ±3 часов от крайних реализаций
-          const expandedMinDate = new Date(minDate.getTime() - 3 * 60 * 60 * 1000); // -3 часа
-          const expandedMaxDate = new Date(maxDate.getTime() + 3 * 60 * 60 * 1000); // +3 часа
-          
-          // Загружаем все товары за период (без лимита для больших реализаций)
-          let from = 0;
-          const pageSize = 1000;
-          let hasMore = true;
-          
-          while (hasMore) {
-            const { data: batch, error: itemsError } = await supabaseAdmin
+          for (const realization of filteredItems) {
+            const realizationTime = new Date(realization.created_at);
+            const timeStart = new Date(realizationTime.getTime() - 300000); // минус 5 минут
+            const timeEnd = new Date(realizationTime.getTime() + 300000); // плюс 5 минут
+            
+            const { data: timeBasedItems, error: timeError } = await supabaseAdmin
               .from('realization_items')
               .select(`
                 id,
@@ -126,53 +100,64 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 size_code,
                 qty,
                 color_id,
-                created_at,
-                products!realization_items_product_id_fkey(
-                  id, 
-                  article, 
-                  name
-                )
+                created_at
               `)
-              .gte('created_at', expandedMinDate.toISOString())
-              .lte('created_at', expandedMaxDate.toISOString())
-              .range(from, from + pageSize - 1);
+              .gte('created_at', timeStart.toISOString())
+              .lte('created_at', timeEnd.toISOString());
             
-            if (itemsError) {
-              console.error('Ошибка при получении товаров:', itemsError);
-              break;
+            if (!timeError && timeBasedItems) {
+              // Добавляем realization_id для группировки
+              timeBasedItems.forEach(item => {
+                (item as any).realization_id = realization.id;
+              });
+              allRealizationItems.push(...timeBasedItems);
             }
-            
-            if (batch && batch.length > 0) {
-              allRealizationItems = allRealizationItems.concat(batch);
-              from += pageSize;
-              hasMore = batch.length === pageSize;
-            } else {
-              hasMore = false;
+          }
+          itemsError = null; // Сбрасываем ошибку, так как данные получены
+        } else if (itemsError && itemsError.code !== '42703') {
+          console.error('Ошибка при получении товаров:', itemsError);
+          // Не возвращаем ошибку, просто продолжаем без товаров
+        }
+        
+        // Затем получаем products отдельно
+        const productIds = new Set<number>();
+        if (allRealizationItems && Array.isArray(allRealizationItems)) {
+          allRealizationItems.forEach(item => {
+            if (item && item.product_id) {
+              productIds.add(item.product_id);
             }
+          });
+        }
+        
+        let productMap: Record<number, { id: number; article: string; name: string }> = {};
+        if (productIds.size > 0) {
+          const { data: products } = await supabaseAdmin
+            .from('products')
+            .select('id, article, name')
+            .in('id', Array.from(productIds));
+          
+          if (products) {
+            products.forEach(product => {
+              productMap[product.id] = product;
+            });
           }
         }
         
-        if (allRealizationItems.length > 0) {
-          if (useRealizationId) {
-            // Группируем по realization_id
-            filteredItems.forEach(realization => {
-              const realizationItems = allRealizationItems.filter(item => item.realization_id === realization.id);
-              itemsByRealization[realization.id] = realizationItems;
-            });
-          } else {
-            // Связываем товары с реализациями по времени (±2 часа)
-            filteredItems.forEach(realization => {
-              const realizationTime = new Date(realization.created_at).getTime();
-              const timeWindow = 2 * 60 * 60 * 1000; // 2 часа в миллисекундах
-              
-              const realizationItems = allRealizationItems.filter(item => {
-                const itemTime = new Date(item.created_at).getTime();
-                return Math.abs(itemTime - realizationTime) <= timeWindow;
-              });
-              
-              itemsByRealization[realization.id] = realizationItems;
-            });
-          }
+        // Добавляем информацию о продуктах к realization_items
+        if (allRealizationItems && Array.isArray(allRealizationItems)) {
+          allRealizationItems.forEach(item => {
+            if (item && item.product_id && productMap[item.product_id]) {
+              (item as any).products = productMap[item.product_id];
+            }
+          });
+        }
+        
+        // Группируем по realization_id
+        if (allRealizationItems && allRealizationItems.length > 0) {
+          filteredItems.forEach(realization => {
+            const realizationItems = allRealizationItems.filter(item => item.realization_id === realization.id);
+            itemsByRealization[realization.id] = realizationItems;
+          });
         }
       }
 
