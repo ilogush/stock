@@ -1,8 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default withPermissions(
+const handler = withPermissions(
   RoleChecks.canManageCompanies,
   'Доступ к компаниям разрешен только администраторам'
 )(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -21,7 +23,9 @@ export default withPermissions(
         .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
 
       if (error) {
-        console.error('Ошибка при получении компаний:', error);
+        log.error('Ошибка при получении компаний', error as Error, {
+          endpoint: '/api/companies'
+        });
         return res.status(500).json({ error: 'Ошибка при получении компаний' });
       }
 
@@ -38,11 +42,6 @@ export default withPermissions(
             (company.description && company.description.toLowerCase().includes(searchTerm))
           );
         });
-      }
-
-      if (error) {
-        console.error('Ошибка при получении компаний:', error);
-        return res.status(500).json({ error: 'Ошибка при получении компаний' });
       }
 
       const companiesWithDetails = await Promise.all(
@@ -66,19 +65,29 @@ export default withPermissions(
         })
       );
 
+      // Если есть поиск, используем длину отфильтрованного массива, иначе count
+      const totalCount = search && typeof search === 'string' && search.trim() !== '' 
+        ? filteredCompanies.length 
+        : (count || 0);
+
       return res.status(200).json({
         companies: companiesWithDetails,
         pagination: {
-          total: filteredCompanies.length || 0,
+          total: totalCount,
           limit: parseInt(limit as string),
           offset: parseInt(offset as string)
         }
       });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при получении компаний', error as Error, {
+        endpoint: '/api/companies'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-}); 
+});
+
+// Применяем rate limiting для GET запросов
+export default withRateLimit(RateLimitConfigs.READ)(handler as any); 

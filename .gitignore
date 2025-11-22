@@ -20,4 +20,8 @@ yarn-debug.log*
 pnpm-debug.log*
 
 # MacOS system files
-.DS_Store 
+.DS_Store
+
+# TypeScript build info (кэш компиляции)
+*.tsbuildinfo
+tsconfig.tsbuildinfo 
