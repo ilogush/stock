@@ -32,6 +32,22 @@ export const CHILDREN_SIZES_WITH_AGE = [
 export const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
 
 /**
+ * Размеры модели W101 с ростом
+ * Используются для валидации и фильтрации товаров с артикулом W101
+ */
+export const W101_SIZES_WITH_GROWTH = [
+  'XS 160', 'XS 170',
+  'S 160', 'S 170',
+  'M 160', 'M 170',
+  'L 160', 'L 170'
+] as const;
+
+/**
+ * Артикул модели W101
+ */
+export const W101_ARTICLE = 'W101';
+
+/**
  * Размер страницы по умолчанию для пагинации
  */
 export const DEFAULT_PAGE_SIZE = 20;

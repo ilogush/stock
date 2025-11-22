@@ -6,6 +6,9 @@ import { normalizeColorName } from '../../../lib/colorNormalizer';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 import { normalizeArticle } from '../../../lib/utils/normalize';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -29,7 +32,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .single();
 
       if (error) {
-        console.error('Ошибка при получении товара:', error);
+        log.error('Ошибка при получении товара', error as Error, {
+          endpoint: `/api/products/${id}`,
+          metadata: { productId: id }
+        });
         return res.status(404).json({ error: 'Товар не найден' });
       }
 
@@ -82,7 +88,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       return res.status(200).json({ data: { product: cleaned } });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при получении товара', error as Error, {
+        endpoint: `/api/products/${id}`,
+        metadata: { productId: id }
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -179,7 +188,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .single();
         
         if (result.error && result.error.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error('Ошибка проверки существующего товара:', result.error);
+          log.error('Ошибка проверки существующего товара', result.error as Error, {
+            endpoint: `/api/products/${id}`,
+            metadata: { productId: id, article: normalizedArticle }
+          });
           return res.status(500).json({ error: 'Ошибка проверки существующего товара' });
         }
 
@@ -214,9 +226,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .single();
 
       if (error) {
-        console.error('Ошибка при обновлении товара:', error);
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Редактирование товара', 'error', `Ошибка: ${error.message}`);
+        log.error('Ошибка при обновлении товара', error as Error, {
+          endpoint: `/api/products/${id}`,
+          userId: userId || undefined,
+          metadata: { productId: id }
+        });
+        if (userId) {
+          await logUserAction(userId, 'Редактирование товара', 'error', `Ошибка: ${error.message}`);
+        }
         return res.status(500).json({ error: 'Ошибка при обновлении товара' });
       }
 
@@ -236,16 +254,24 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           })
           .eq('id', id);
         
-        console.log(`🚫 Товар ${id} (${article}) скрыт - нет изображений`);
+        log.info(`Товар ${id} (${article}) скрыт - нет изображений`, {
+          endpoint: `/api/products/${id}`,
+          metadata: { productId: id, article: normalizedArticle }
+        });
       }
 
       // Логируем успешное обновление
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Редактирование товара', 'success', `Обновлен товар: ${name} (${article})`);
+      if (userId) {
+        await logUserAction(userId, 'Редактирование товара', 'success', `Обновлен товар: ${name} (${article})`);
+      }
 
       return res.status(200).json(product);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при обновлении товара', error as Error, {
+        endpoint: `/api/products/${id}`,
+        metadata: { productId: id }
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -297,7 +323,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           return filePath;
         });
 
-        console.log('Удаляем файлы из Storage:', filesToDelete);
+        log.debug('Удаляем файлы из Storage', {
+          endpoint: `/api/products/${id}`,
+          metadata: { productId: id, filesCount: filesToDelete.length }
+        });
 
         // Удаляем файлы из Storage
         const { error: storageError } = await supabaseAdmin.storage
@@ -305,9 +334,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .remove(filesToDelete);
 
         if (storageError) {
-          console.error('Ошибка удаления файлов из Storage:', storageError);
+          log.error('Ошибка удаления файлов из Storage', storageError as Error, {
+            endpoint: `/api/products/${id}`,
+            metadata: { productId: id }
+          });
         } else {
-          console.log(`Удалено ${filesToDelete.length} файлов из Storage`);
+          log.info(`Удалено ${filesToDelete.length} файлов из Storage`, {
+            endpoint: `/api/products/${id}`,
+            metadata: { productId: id }
+          });
         }
       }
 
@@ -324,19 +359,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .eq('id', id);
 
       if (error) {
-        console.error('Ошибка при удалении товара:', error);
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Удаление товара', 'error', `Ошибка: ${error.message}`);
+        log.error('Ошибка при удалении товара', error as Error, {
+          endpoint: `/api/products/${id}`,
+          userId: userId || undefined,
+          metadata: { productId: id }
+        });
+        if (userId) {
+          await logUserAction(userId, 'Удаление товара', 'error', `Ошибка: ${error.message}`);
+        }
         return res.status(500).json({ error: 'Ошибка при удалении товара' });
       }
 
       // Логируем успешное удаление
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Удаление товара', 'success', `Удален товар с ID: ${id}`);
+      if (userId) {
+        await logUserAction(userId, 'Удаление товара', 'success', `Удален товар с ID: ${id}`);
+      }
 
       return res.status(200).json({ message: 'Товар успешно удален' });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при удалении товара', error as Error, {
+        endpoint: `/api/products/${id}`,
+        metadata: { productId: id }
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -345,7 +391,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 // Разрешаем управление товарами админам, менеджерам и кладовщикам
-export default withPermissions(
+const handlerWithAuth = withPermissions(
   RoleChecks.canManageProducts,
   'Недостаточно прав для управления товарами'
 )(handler);
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+// GET запросы не требуют CSRF, но требуют rate limiting
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handlerWithAuth as any) as typeof handlerWithAuth
+);

@@ -225,17 +225,25 @@ export class AuthService {
   }
 
   /**
-   * Устанавливает куки для пользователя
+   * Устанавливает куки для пользователя с защитой безопасности
    */
   static setUserCookie(res: NextApiResponse, userId: number): void {
-    res.setHeader('Set-Cookie', `user_id=${userId}; HttpOnly; Path=/; Max-Age=86400`);
+    const { setSecureCookie } = require('./utils/cookieUtils');
+    setSecureCookie(res, 'user_id', userId.toString(), {
+      maxAge: 86400, // 24 часа
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      path: '/'
+    });
   }
 
   /**
    * Очищает куки пользователя
    */
   static clearUserCookie(res: NextApiResponse): void {
-    res.setHeader('Set-Cookie', 'user_id=; HttpOnly; Path=/; Max-Age=0');
+    const { clearSecureCookie } = require('./utils/cookieUtils');
+    clearSecureCookie(res, 'user_id', '/');
   }
 
   /**

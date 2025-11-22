@@ -66,13 +66,17 @@ export async function createRecord<T>(
     if (error) {
       console.error(`Ошибка создания ${tableName}:`, error);
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, actionName, 'error', `Ошибка: ${error.message}`);
+      if (userId) {
+        await logUserAction(userId, actionName, 'error', `Ошибка: ${error.message}`);
+      }
       
       return { error: `Ошибка создания: ${error.message}` };
     }
 
     const userId = getUserIdFromCookie(req);
-    await logUserAction(userId, actionName, 'success', `Создан ${tableName}: ${JSON.stringify(record)}`);
+    if (userId) {
+      await logUserAction(userId, actionName, 'success', `Создан ${tableName}: ${JSON.stringify(record)}`);
+    }
 
     return { data: record };
   } catch (error) {
@@ -101,13 +105,17 @@ export async function updateRecord<T>(
     if (error) {
       console.error(`Ошибка обновления ${tableName}:`, error);
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, actionName, 'error', `Ошибка: ${error.message}`);
+      if (userId) {
+        await logUserAction(userId, actionName, 'error', `Ошибка: ${error.message}`);
+      }
       
       return { error: `Ошибка обновления: ${error.message}` };
     }
 
     const userId = getUserIdFromCookie(req);
-    await logUserAction(userId, actionName, 'success', `Обновлен ${tableName}: ${JSON.stringify(record)}`);
+    if (userId) {
+      await logUserAction(userId, actionName, 'success', `Обновлен ${tableName}: ${JSON.stringify(record)}`);
+    }
 
     return { data: record };
   } catch (error) {
@@ -133,13 +141,17 @@ export async function deleteRecord(
     if (error) {
       console.error(`Ошибка удаления ${tableName}:`, error);
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, actionName, 'error', `Ошибка: ${error.message}`);
+      if (userId) {
+        await logUserAction(userId, actionName, 'error', `Ошибка: ${error.message}`);
+      }
       
       return { error: `Ошибка удаления: ${error.message}` };
     }
 
     const userId = getUserIdFromCookie(req);
-    await logUserAction(userId, actionName, 'success', `Удален ${tableName} с ID: ${id}`);
+    if (userId) {
+      await logUserAction(userId, actionName, 'success', `Удален ${tableName} с ID: ${id}`);
+    }
 
     return { data: { success: true } };
   } catch (error) {

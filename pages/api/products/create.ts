@@ -8,9 +8,12 @@ import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorH
 import { ValidationService } from '../../../lib/validationService';
 import { DatabaseService } from '../../../lib/databaseService';
 import { normalizeArticle } from '../../../lib/utils/normalize';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 // Разрешаем создание товаров админам, менеджерам и кладовщикам
-export default withPermissions(
+const handler = withPermissions(
   RoleChecks.canCreateProducts,
   'Недостаточно прав для создания товаров'
 )(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
@@ -74,7 +77,10 @@ export default withPermissions(
         }
 
         if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error('Ошибка проверки существующего товара:', checkError);
+          log.error('Ошибка проверки существующего товара', checkError as Error, {
+            endpoint: '/api/products/create',
+            metadata: { article: normalizedArticle }
+          });
           return res.status(500).json({ error: 'Ошибка проверки существующего товара' });
         }
 
@@ -112,9 +118,15 @@ export default withPermissions(
 
       if (error) {
         const friendly = translateSupabaseError(error);
-        console.error('Ошибка создания товара:', error);
+        log.error('Ошибка создания товара', error as Error, {
+          endpoint: '/api/products/create',
+          userId: req.user?.id,
+          metadata: { article: normalizedArticle }
+        });
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Создание товара', 'error', `Ошибка: ${error.message}`);
+        if (userId) {
+          await logUserAction(userId, 'Создание товара', 'error', `Ошибка: ${error.message}`);
+        }
         return res.status(400).json({ 
           error: friendly,
           details: error.message
@@ -138,7 +150,10 @@ export default withPermissions(
           })
           .eq('id', product.id);
         
-        console.log(`🚫 Товар ${product.id} (${article}) скрыт - нет изображений`);
+        log.info(`Товар ${product.id} (${article}) скрыт - нет изображений`, {
+          endpoint: '/api/products/create',
+          metadata: { productId: product.id, article: normalizedArticle }
+        });
       }
 
       // Логируем успешное создание

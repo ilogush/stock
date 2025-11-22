@@ -2,8 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default withPermissions(
+const handler = withPermissions(
   RoleChecks.canManageBrands,
   'Создание брендов разрешено только администраторам'
 )(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,22 +30,36 @@ export default withPermissions(
         .single();
 
       if (error) {
-        console.error('Ошибка при создании бренда:', error);
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Создание бренда', 'error', `Ошибка: ${error.message}`);
+        log.error('Ошибка при создании бренда', error as Error, {
+          endpoint: '/api/brands/create',
+          userId: userId || undefined
+        });
+        if (userId) {
+          await logUserAction(userId, 'Создание бренда', 'error', `Ошибка: ${error.message}`);
+        }
         return res.status(500).json({ error: 'Ошибка при создании бренда' });
       }
 
       // Логируем успешное создание бренда
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Создание бренда', 'success', `Создан бренд: ${name}`);
+      if (userId) {
+        await logUserAction(userId, 'Создание бренда', 'success', `Создан бренд: ${name}`);
+      }
 
       return res.status(201).json(data);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при создании бренда', error as Error, {
+        endpoint: '/api/brands/create'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-}); 
+});
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
+); 

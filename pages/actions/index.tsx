@@ -22,7 +22,7 @@ interface UserAction {
   status: string;
   details: string | null;
   created_at: string;
-  user: User;
+  user: User | null;
 }
 
 type PaginationInfo = {
@@ -78,11 +78,11 @@ const ActionsPage: NextPage = () => {
     }
   }, [user, router]);
 
-  const fetchActions = async (page = 1, limit?: number) => {
+  const fetchActions = async (page = 1, limit = 1000) => {
     try {
       setLoading(true);
       // Загружаем больше данных для локального поиска
-      const query = new URLSearchParams({ page: '1', limit: '1000' });
+      const query = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
       
       const res = await fetch(`/api/actions?${query.toString()}`);
       const data = await res.json();
@@ -143,8 +143,8 @@ const ActionsPage: NextPage = () => {
       const dateTimeStr = `${dateStr} ${timeStr}`;
       
       // Поиск по пользователю
-      const userName = `${action.user.first_name} ${action.user.last_name}`.toLowerCase();
-      const userEmail = action.user.email.toLowerCase();
+      const userName = action.user ? `${action.user.first_name || ''} ${action.user.last_name || ''}`.toLowerCase() : '';
+      const userEmail = action.user?.email?.toLowerCase() || '';
       
       // Поиск по действию
       const actionName = action.action_name.toLowerCase();
@@ -353,7 +353,7 @@ const ActionsPage: NextPage = () => {
                     </td>
                     <td className="table-cell">
                       <div className="text-sm font-medium">
-                        {action.user.first_name} {action.user.last_name}
+                        {action.user?.first_name || 'Неизвестный'} {action.user?.last_name || 'пользователь'}
                       </div>
                     </td>
                     <td className="table-cell">

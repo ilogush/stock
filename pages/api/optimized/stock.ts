@@ -186,15 +186,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         const lastReceiptId = lastReceipt[0].id;
         lastArticleDate = lastReceipt[0].created_at;
         
-        // Получаем товары из последнего поступления
+        // Получаем товары из последнего поступления по receipt_id
         const { data: lastReceiptItems, error: itemsError } = await supabaseAdmin
           .from('receipt_items')
           .select(`
             product_id,
             product:products(article)
           `)
-          .gte('created_at', new Date(new Date(lastReceipt[0].created_at).getTime() - 60000).toISOString())
-          .lte('created_at', new Date(new Date(lastReceipt[0].created_at).getTime() + 60000).toISOString())
+          .eq('receipt_id', lastReceiptId)
           .limit(1);
         
         if (itemsError) {
@@ -312,8 +311,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const sortedSizes = Array.from(allSizes).sort((a, b) => {
         // Сортируем по размеру используя константу
         const sizeOrder = ADULT_SIZES;
-        const aIndex = sizeOrder.indexOf(a.toUpperCase());
-        const bIndex = sizeOrder.indexOf(b.toUpperCase());
+        const aIndex = sizeOrder.indexOf(a.toUpperCase() as typeof ADULT_SIZES[number]);
+        const bIndex = sizeOrder.indexOf(b.toUpperCase() as typeof ADULT_SIZES[number]);
         
         if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
         if (aIndex === -1) return 1;

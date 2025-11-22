@@ -302,7 +302,7 @@ class PerformanceMonitor {
   exportMetrics(): {
     performance: PerformanceMetrics[];
     system: SystemMetrics[];
-    stats: ReturnType<typeof this.getPerformanceStats>;
+    stats: ReturnType<PerformanceMonitor['getPerformanceStats']>;
   } {
     return {
       performance: [...this.metrics],
@@ -327,8 +327,8 @@ export const performanceMonitor = new PerformanceMonitor();
 /**
  * Middleware для автоматического мониторинга API запросов
  */
-export function withPerformanceMonitoring<T extends any[]>(
-  handler: (...args: T) => Promise<void>
+export function withPerformanceMonitoring(
+  handler: (...args: any[]) => Promise<void>
 ) {
   return async (req: any, res: any, ...args: any[]): Promise<void> => {
     const start = Date.now();

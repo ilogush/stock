@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { withPerformanceTracking } from '../../../lib/performanceTracker';
 import { normalizeColorId, extractSizeNumber } from '../../../lib/utils/normalize';
 import { CHILDREN_SIZES, CHILDREN_CATEGORY_ID, ADULT_SIZES } from '../../../lib/constants';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -22,7 +24,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .from('colors')
         .select('id,name');
       if (colorsErr) {
-        console.error('Ошибка при загрузке цветов:', colorsErr);
+        log.error('Ошибка при загрузке цветов', colorsErr as Error, {
+          endpoint: '/api/stock'
+        });
       }
       const codeToName = new Map((colorsData||[]).map((c:any)=>[c.id.toString(), c.name] as const));
 
@@ -54,9 +58,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         // Декодируем URL-encoded поисковый запрос
         const decodedSearch = decodeURIComponent(search.trim());
         const searchTerm = decodedSearch.toLowerCase();
-        console.log('Оригинальный поиск:', search);
-        console.log('Декодированный поиск:', decodedSearch);
-        console.log('Поисковый термин:', searchTerm);
+        log.debug('Поиск по складу', {
+          endpoint: '/api/stock',
+          metadata: { original: search, decoded: decodedSearch, term: searchTerm }
+        });
         let allProductIds: number[] = [];
         
         // 1. Ищем товары по артикулу
@@ -96,7 +101,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         
         // 4. Ищем товары по цвету - напрямую по названию цвета
         if (searchTerm) {
-          console.log('Поиск по цвету для термина:', searchTerm);
+          log.debug('Поиск по цвету', {
+            endpoint: '/api/stock',
+            metadata: { searchTerm }
+          });
           
           // Сначала ищем цвета по названию (используем декодированный текст)
           const { data: matchingColors, error: colorError } = await supabaseAdmin
@@ -105,15 +113,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             .ilike('name', `%${searchTerm}%`);
           
           if (colorError) {
-            console.error('Ошибка поиска цветов:', colorError);
+            log.error('Ошибка поиска цветов', colorError as Error, {
+              endpoint: '/api/stock'
+            });
           }
           
-          console.log('Найдены цвета:', matchingColors);
+          log.debug('Найдены цвета', {
+            endpoint: '/api/stock',
+            metadata: { colors: matchingColors }
+          });
           
           if (matchingColors && matchingColors.length > 0) {
             // Получаем ID цветов, которые подходят под поиск
             const matchingColorIds = matchingColors.map((c: any) => c.id);
-            console.log('ID найденных цветов:', matchingColorIds);
+            log.debug('ID найденных цветов', {
+              endpoint: '/api/stock',
+              metadata: { colorIds: matchingColorIds }
+            });
             
             // Теперь ищем товары с этими цветами
             const { data: colorProducts, error: productError } = await supabaseAdmin
@@ -122,15 +138,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               .in('color_id', matchingColorIds);
             
             if (productError) {
-              console.error('Ошибка поиска товаров по цветам:', productError);
+              log.error('Ошибка поиска товаров по цветам', productError as Error, {
+                endpoint: '/api/stock'
+              });
             }
             
-            console.log('Найдены товары по цветам:', colorProducts);
+            log.debug('Найдены товары по цветам', {
+              endpoint: '/api/stock',
+              metadata: { products: colorProducts }
+            });
             
             if (colorProducts && colorProducts.length > 0) {
               const productIds = colorProducts.map((p: any) => p.id);
               allProductIds.push(...productIds);
-              console.log('Добавлены ID товаров по цветам:', productIds);
+              log.debug('Добавлены ID товаров по цветам', {
+                endpoint: '/api/stock',
+                metadata: { productIds }
+              });
             }
           }
         }
@@ -152,7 +176,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .select('id')
           .eq('category_id', appliedCategory);
         if (catErr) {
-          console.error('Ошибка фильтра категории:', catErr);
+          log.error('Ошибка фильтра категории', catErr as Error, {
+            endpoint: '/api/stock'
+          });
         } else {
           categoryProductIds = (catProds || []).map((p: any) => p.id);
           if (categoryProductIds.length === 0) {
@@ -165,7 +191,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const { data: receiptItems, error } = await query;
 
       if (error) {
-        console.error('Ошибка при получении данных поступлений:', error);
+        log.error('Ошибка при получении данных поступлений', error as Error, {
+          endpoint: '/api/stock'
+        });
         return res.status(500).json({ error: 'Ошибка при получении данных поступлений' });
       }
 
@@ -416,7 +444,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
       });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при получении данных склада', error as Error, {
+        endpoint: '/api/stock'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -424,5 +454,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
 
-// 📊 Экспортируем с мониторингом производительности
-export default withPerformanceTracking(handler, '/api/stock'); 
+// 📊 Экспортируем с мониторингом производительности и rate limiting
+const handlerWithTracking = withPerformanceTracking(handler, '/api/stock');
+export default withRateLimit(RateLimitConfigs.READ)(handlerWithTracking); 

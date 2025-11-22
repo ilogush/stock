@@ -353,7 +353,7 @@ const ProductsPage: NextPage = () => {
             <table className="table-standard">
               <thead>
                 <tr>
-                  {['Изобр.', 'Бренд', 'Артикул', 'Название', 'Категория', 'Цена', 'Цвет', 'Старая цена', 'Фото', 'Поп', 'На сайт'].map(
+                  {['Изобр.', 'Бренд', 'Артикул', 'Название', 'Категория', 'Цвет', 'Цена', 'Старая цена', 'Фото', 'Поп', 'На сайт'].map(
                     (head) => (
                       <th
                         key={head}
@@ -399,13 +399,15 @@ const ProductsPage: NextPage = () => {
                       </div>
                     </td>
                     <td className="table-cell">{p.brandName||'—'}</td>
-                    <td className="table-cell-mono">{p.article}</td>
+                    <td className="table-cell-mono">
+                      {p.article && /^[0-9]+$/.test(p.article) ? `L${p.article}` : (p.article || '—')}
+                    </td>
                     <td className="table-cell">{cleanProductName(p.name, p.subcategoryName, p.categoryName)}</td>
                     <td className="table-cell">{p.subcategoryName || p.categoryName || '—'}</td>
+                    <td className="table-cell">{p.colorName || '—'}</td>
                     <td className="table-cell">
                       {p.price ? `${p.price} ₽` : '-'}
                     </td>
-                    <td className="table-cell">{p.colorName || '—'}</td>
                     <td className="table-cell">
                       {p.old_price ? `${p.old_price} ₽` : '-'}
                     </td>

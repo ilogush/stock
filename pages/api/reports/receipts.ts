@@ -1,11 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 /**
  * API endpoint для получения отчета по поступлениям
  * Поддерживает фильтрацию по датам и пользователю
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Метод не поддерживается' });
   }
@@ -44,7 +46,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: receipts, error: receiptsError } = await receiptQuery;
 
     if (receiptsError) {
-      console.error('Ошибка при получении поступлений:', receiptsError);
+      log.error('Ошибка при получении поступлений', receiptsError as Error, {
+        endpoint: '/api/reports/receipts'
+      });
       return res.status(500).json({ error: 'Ошибка при получении данных о поступлениях' });
     }
 
@@ -59,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const receiptIds = receipts.map(r => r.id);
+    const receiptIds = receipts.map((r: any) => r.id);
 
     // Получаем пользователей
     const userIds = new Set<number>();
@@ -81,67 +85,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Получаем товары из поступлений
-    // Сначала пробуем по receipt_id, если колонка существует
-    let receiptItems: any[] | null = null;
-    let itemsError: any = null;
+    // Получаем товары из поступлений по receipt_id
+    const { data: receiptItems, error: itemsError } = await supabaseAdmin
+      .from('receipt_items')
+      .select(`
+        id,
+        receipt_id,
+        product_id,
+        size_code,
+        color_id,
+        qty,
+        created_at
+      `)
+      .in('receipt_id', receiptIds);
     
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('receipt_items')
-        .select(`
-          id,
-          receipt_id,
-          product_id,
-          size_code,
-          color_id,
-          qty,
-          created_at
-        `)
-        .in('receipt_id', receiptIds);
-      
-      receiptItems = data;
-      itemsError = error;
-    } catch (e: any) {
-      itemsError = e;
-    }
-    
-    // Если колонка receipt_id не существует, используем связь по времени
-    if (itemsError && (itemsError.code === '42703' || itemsError.message?.includes('receipt_id') || itemsError.message?.includes('does not exist'))) {
-      console.log('[API /api/reports/receipts] Колонка receipt_id не существует, используем связь по времени');
-      receiptItems = [];
-      
-      for (const receipt of receipts) {
-        const receiptTime = new Date(receipt.created_at);
-        const timeStart = new Date(receiptTime.getTime() - 300000); // минус 5 минут
-        const timeEnd = new Date(receiptTime.getTime() + 300000); // плюс 5 минут
-        
-        const { data: timeBasedItems, error: timeError } = await supabaseAdmin
-          .from('receipt_items')
-          .select(`
-            id,
-            product_id,
-            size_code,
-            color_id,
-            qty,
-            created_at
-          `)
-          .gte('created_at', timeStart.toISOString())
-          .lte('created_at', timeEnd.toISOString());
-        
-        if (!timeError && timeBasedItems) {
-          // Добавляем receipt_id для группировки
-          timeBasedItems.forEach(item => {
-            (item as any).receipt_id = receipt.id;
-          });
-          receiptItems.push(...timeBasedItems);
-        }
+      if (itemsError) {
+        log.error('Ошибка при получении товаров по receipt_id', itemsError as Error, {
+          endpoint: '/api/reports/receipts'
+        });
+        return res.status(500).json({ error: 'Ошибка при получении товаров поступлений' });
       }
-      itemsError = null; // Сбрасываем ошибку, так как данные получены
-    } else if (itemsError && itemsError.code !== 'PGRST116') {
-      console.error('[API /api/reports/receipts] Ошибка при получении товаров по receipt_id:', itemsError);
-      return res.status(500).json({ error: 'Ошибка при получении товаров поступлений' });
-    }
 
     // Если указан поиск по артикулу, фильтруем товары
     let filteredReceiptItems = receiptItems || [];
@@ -154,7 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .ilike('article', `%${searchTerm}%`);
       
       if (productsByArticle && productsByArticle.length > 0) {
-        const productIds = productsByArticle.map(p => p.id);
+        const productIds = productsByArticle.map((p: any) => p.id);
         filteredReceiptItems = (receiptItems || []).filter(
           (item: any) => productIds.includes(item.product_id)
         );
@@ -184,7 +147,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .in('id', batch);
 
         if (productsError) {
-          console.error('Ошибка при получении товаров:', productsError);
+          log.error('Ошибка при получении товаров', productsError as Error, {
+            endpoint: '/api/reports/receipts'
+          });
         } else if (products) {
           products.forEach((p: any) => {
             productMap[p.id] = p;
@@ -268,7 +233,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const totalReceipts = reportData.length;
     const totalItems = filteredReceiptItems.length;
-    const totalQuantity = reportData.reduce((sum, r) => sum + r.totalQuantity, 0);
+    const totalQuantity = reportData.reduce((sum: number, r: any) => sum + r.totalQuantity, 0);
 
     return res.status(200).json({
       data: {
@@ -279,8 +244,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
   } catch (error: any) {
-    console.error('Ошибка при формировании отчета по поступлениям:', error);
+    log.error('Ошибка при формировании отчета по поступлениям', error as Error, {
+      endpoint: '/api/reports/receipts'
+    });
     return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 }
+
+// Применяем rate limiting для GET запросов
+export default withRateLimit(RateLimitConfigs.READ)(handler);
 

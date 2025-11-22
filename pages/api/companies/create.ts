@@ -2,8 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default withPermissions(
+const handler = withPermissions(
   RoleChecks.canManageCompanies,
   'Создание компаний разрешено только администраторам'
 )(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -26,22 +29,36 @@ export default withPermissions(
         .single();
 
       if (error) {
-        console.error('Ошибка при создании компании:', error);
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Создание компании', 'error', `Ошибка: ${error.message}`);
+        log.error('Ошибка при создании компании', error as Error, {
+          endpoint: '/api/companies/create',
+          userId: userId || undefined
+        });
+        if (userId) {
+          await logUserAction(userId, 'Создание компании', 'error', `Ошибка: ${error.message}`);
+        }
         return res.status(500).json({ error: 'Ошибка при создании компании' });
       }
 
       // Логируем успешное создание компании
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Создание компании', 'success', `Создана компания: ${name.trim()}`);
+      if (userId) {
+        await logUserAction(userId, 'Создание компании', 'success', `Создана компания: ${name.trim()}`);
+      }
 
       return res.status(201).json(data);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при создании компании', error as Error, {
+        endpoint: '/api/companies/create'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-}); 
+});
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
+); 

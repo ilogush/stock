@@ -142,7 +142,7 @@ const EditProduct: NextPage = () => {
       const [brandsRes, categoriesRes, colorsRes] = await Promise.all([
         fetch('/api/brands'),
         fetch('/api/categories'),
-        fetch('/api/colors?limit=100')
+        fetch('/api/colors?limit=1000')
       ]);
 
       const [brandsData, categoriesData, colorsData] = await Promise.all([
@@ -471,7 +471,7 @@ const EditProduct: NextPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Категория <span className="text-red-500">*</span>
             </label>
-            {console.log('Rendering category select with value:', formData.category_id, 'categories:', categories)}
+            {/* Debug: category_id={formData.category_id}, categories count={categories.length} */}
             <select
               name="category_id"
               value={formData.category_id}

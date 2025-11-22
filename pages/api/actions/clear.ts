@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'DELETE') {
     try {
       // Проверяем, что запрос от админа (можно добавить дополнительную проверку)
@@ -13,7 +16,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .neq('id', 0); // Удаляем все записи
 
       if (error) {
-        console.error('Ошибка очистки истории действий:', error);
+        log.error('Ошибка очистки истории действий', error as Error, {
+          endpoint: '/api/actions/clear'
+        });
         return res.status(500).json({ error: 'Ошибка очистки истории действий' });
       }
 
@@ -23,7 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при очистке истории действий', error as Error, {
+        endpoint: '/api/actions/clear'
+      });
       return res.status(500).json({ 
         error: 'Внутренняя ошибка сервера',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -33,3 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler)
+);

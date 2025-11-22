@@ -93,7 +93,10 @@ export const RoleChecks = {
   canManageCompanies: (roleId: number) => roleId === ROLES.ADMIN,
   
   // Управление производством - админ и менеджер
-  canManageProduction: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId)
+  canManageProduction: (roleId: number) => ([ROLES.ADMIN, ROLES.MANAGER] as number[]).includes(roleId),
+  
+  // Управление системой - только админ
+  canManageSystem: (roleId: number) => roleId === ROLES.ADMIN
 };
 
 /**
@@ -133,7 +136,16 @@ export function withAuth(handler: (req: AuthenticatedRequest, res: NextApiRespon
       // Вызываем основной обработчик
       return await handler(req, res);
     } catch (error) {
-      console.error('Ошибка middleware аутентификации:', error);
+      // Используем log из loggingService, но избегаем циклических зависимостей
+      // Если loggingService недоступен, используем console.error как fallback
+      try {
+        const { log } = await import('../loggingService');
+        log.error('Ошибка middleware аутентификации', error as Error, {
+          endpoint: req.url
+        });
+      } catch {
+        console.error('Ошибка middleware аутентификации:', error);
+      }
       return handleAuthError('Ошибка авторизации', res, 500);
     }
   };

@@ -72,6 +72,7 @@ export function useDataLoader<T = any>(
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<T | null>(null);
 
   /**
    * Функция загрузки данных
@@ -132,7 +133,7 @@ export function useDataLoader<T = any>(
         showToast(message, 'error');
       }
     }
-  }, [loader, onSuccess, onError, transform, cache, cacheTime, showToast, successMessage, errorMessage]);
+  }, [loader, onSuccess, onError, transform, showToast, successMessage, errorMessage]);
 
   /**
    * Перезагрузить данные

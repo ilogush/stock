@@ -40,7 +40,7 @@ export default withPermissions(
           `);
 
         if (matchingProducts && matchingProducts.length > 0) {
-          const productIds = matchingProducts.map(p => p.id);
+          const productIds = matchingProducts.map((p: any) => p.id);
           
           // Ищем реализации с этими товарами
           const { data: realizationItems } = await supabaseAdmin
@@ -49,7 +49,7 @@ export default withPermissions(
             .in('product_id', productIds);
 
           if (realizationItems && realizationItems.length > 0) {
-            const realizationIds = Array.from(new Set(realizationItems.map(r => r.realization_id)));
+            const realizationIds = Array.from(new Set(realizationItems.map((r: any) => r.realization_id)));
             query = query.in('id', realizationIds);
           } else {
             // Если нет товаров, возвращаем пустой результат
@@ -77,8 +77,21 @@ export default withPermissions(
         return res.status(500).json({ error: 'Ошибка получения реализаций' });
       }
 
-      // Получаем позиции реализаций одним запросом
-      const realizationIds = realizations?.map(r => r.id) || [];
+      // Получаем позиции реализаций одним запросом по realization_id
+      const realizationIds = realizations?.map((r: any) => r.id) || [];
+      
+      if (realizationIds.length === 0) {
+        return res.status(200).json({
+          realizations: [],
+          pagination: {
+            total: count || 0,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil((count || 0) / limitNum)
+          }
+        });
+      }
+
       const { data: realizationItems, error: itemsError } = await supabaseAdmin
         .from('realization_items')
         .select(`
@@ -101,16 +114,16 @@ export default withPermissions(
       }
 
       // Группируем позиции по реализациям
-      const itemsByRealization = new Map();
-      (realizationItems || []).forEach(item => {
+      const itemsByRealization = new Map<number, any[]>();
+      (realizationItems || []).forEach((item: any) => {
         if (!itemsByRealization.has(item.realization_id)) {
           itemsByRealization.set(item.realization_id, []);
         }
-        itemsByRealization.get(item.realization_id).push(item);
+        itemsByRealization.get(item.realization_id)!.push(item);
       });
 
       // Добавляем позиции к реализациям
-      const realizationsWithItems = realizations?.map(realization => ({
+      const realizationsWithItems = realizations?.map((realization: any) => ({
         ...realization,
         items: itemsByRealization.get(realization.id) || []
       })) || [];

@@ -119,7 +119,8 @@ export const RateLimitConfigs = {
  */
 export function cleanupRateLimitStore(): void {
   const now = Date.now();
-  for (const [key, entry] of rateLimitStore.entries()) {
+  const entries = Array.from(rateLimitStore.entries());
+  for (const [key, entry] of entries) {
     if (entry.resetTime <= now) {
       rateLimitStore.delete(key);
     }

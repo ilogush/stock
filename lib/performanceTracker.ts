@@ -20,7 +20,7 @@ class PerformanceTracker {
   /**
    * Начать отслеживание запроса
    */
-  startTracking(endpoint: string, method: string): () => PerformanceMetric {
+  startTracking(endpoint: string, method: string): (additionalData?: Partial<PerformanceMetric>) => PerformanceMetric {
     const startTime = Date.now();
     
     return (additionalData?: Partial<PerformanceMetric>) => {

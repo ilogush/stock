@@ -22,7 +22,7 @@ interface UserAction {
   status: string;
   details: string | null;
   created_at: string;
-  user: User;
+  user: User | null;
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
@@ -127,10 +127,10 @@ export default function ActionDetail({ action }: { action: UserAction }) {
               <span className="font-medium">Дата и время:</span> {new Date(action.created_at).toLocaleString('ru-RU')}
             </div>
             <div>
-              <span className="font-medium">Пользователь:</span> {action.user.first_name} {action.user.last_name}
+              <span className="font-medium">Пользователь:</span> {action.user?.first_name || 'Неизвестный'} {action.user?.last_name || 'пользователь'}
             </div>
             <div>
-              <span className="font-medium">Email:</span> {action.user.email}
+              <span className="font-medium">Email:</span> {action.user?.email || 'Не указан'}
             </div>
             <div>
               <span className="font-medium">Действие:</span> {action.action_name}
@@ -164,8 +164,8 @@ export default function ActionDetail({ action }: { action: UserAction }) {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div><strong>Дата и время:</strong> {new Date(action.created_at).toLocaleString('ru-RU')}</div>
-            <div><strong>Пользователь:</strong> {action.user.first_name} {action.user.last_name}</div>
-            <div><strong>Email:</strong> {action.user.email}</div>
+            <div><strong>Пользователь:</strong> {action.user?.first_name || 'Неизвестный'} {action.user?.last_name || 'пользователь'}</div>
+            <div><strong>Email:</strong> {action.user?.email || 'Не указан'}</div>
             <div><strong>Действие:</strong> {action.action_name}</div>
             <div><strong>Статус:</strong> {getStatusLabel(action.status).toLowerCase()}</div>
           </div>

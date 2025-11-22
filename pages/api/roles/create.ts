@@ -1,8 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Метод не поддерживается' });
   }
@@ -22,22 +25,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error) {
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Создание роли', 'error', `Ошибка: ${error.message}`);
+      if (userId) {
+        await logUserAction(userId, 'Создание роли', 'error', `Ошибка: ${error.message}`);
+      }
       
       if (error.code === '23505') {
         return res.status(400).json({ error: 'Роль с таким ключом уже существует' });
       }
-      console.error('Ошибка при создании роли:', error);
+      log.error('Ошибка при создании роли', error as Error, {
+        endpoint: '/api/roles/create',
+        userId: userId || undefined
+      });
       return res.status(500).json({ error: 'Ошибка при создании роли' });
     }
 
     // Логируем успешное создание роли
     const userId = getUserIdFromCookie(req);
-    await logUserAction(userId, 'Создание роли', 'success', `Создана роль: ${name}`);
+    if (userId) {
+      await logUserAction(userId, 'Создание роли', 'success', `Создана роль: ${name}`);
+    }
 
     return res.status(201).json(data);
   } catch (e) {
-    console.error('Ошибка сервера:', e);
+    log.error('Ошибка сервера при создании роли', e as Error, {
+      endpoint: '/api/roles/create'
+    });
     return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
-} 
+}
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler)
+); 

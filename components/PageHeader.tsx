@@ -46,23 +46,27 @@ export default function PageHeader({
     }
   };
 
-  return (
-    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
-      <div className="flex items-center gap-3">
-        {/* Кнопка "Назад" - теперь перед заголовком с новой иконкой */}
-        {showBackButton && (
-          <button
-            onClick={handleBack}
-            className="text-gray-600 hover:text-gray-800 no-print"
-            title="Назад"
-          >
-            <ArrowLeftIcon className="w-6 h-6" />
-          </button>
-        )}
-        <h1 className="text-xl font-bold text-gray-800">{title}</h1>
-      </div>
-      
-      <div className="flex items-center gap-3 no-print">
+  // Если есть action, copyAction, deleteAction или children, используем полную структуру с отступами
+  const hasActions = !!(action || copyAction || deleteAction || children);
+  
+  if (hasActions) {
+    return (
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-6 pb-4 border-b-0 sm:border-b sm:border-gray-200">
+        <div className="flex items-center gap-3">
+          {/* Кнопка "Назад" - теперь перед заголовком с новой иконкой */}
+          {showBackButton && (
+            <button
+              onClick={handleBack}
+              className="text-gray-600 hover:text-gray-800 no-print"
+              title="Назад"
+            >
+              <ArrowLeftIcon className="w-6 h-6" />
+            </button>
+          )}
+          <h1 className="text-xl font-bold text-gray-800">{title}</h1>
+        </div>
+        
+        <div className="flex items-center gap-3 no-print">
 
         {/* Кнопка копирования */}
         {copyAction && (
@@ -89,11 +93,14 @@ export default function PageHeader({
               disabled={action.disabled}
               className={`btn text-xs flex items-center hover:bg-gray-800 hover:text-white disabled:opacity-50 ${
                 action.icon && !action.label ? 'justify-center' : 'gap-2'
-              } ${action.label.includes('Печать') || (action.icon && !action.label) ? 'hidden sm:flex' : ''}`}
+              }`}
               title={action.icon && !action.label ? 'Печать' : undefined}
             >
               {action.icon ? (
-                action.icon
+                <>
+                  {action.icon}
+                  {action.label && <span>{action.label}</span>}
+                </>
               ) : (
                 <>
                   {action.label.includes('Сохранить') || action.label.includes('Отправить') ? null : <PlusIcon className="w-4 h-4" />}
@@ -118,6 +125,24 @@ export default function PageHeader({
 
         {children}
       </div>
+    </div>
+    );
+  }
+  
+  // Если нет действий, возвращаем простую структуру без обертки
+  return (
+    <div className="flex items-center gap-3">
+      {/* Кнопка "Назад" - теперь перед заголовком с новой иконкой */}
+      {showBackButton && (
+        <button
+          onClick={handleBack}
+          className="text-gray-600 hover:text-gray-800 no-print"
+          title="Назад"
+        >
+          <ArrowLeftIcon className="w-6 h-6" />
+        </button>
+      )}
+      <h1 className="text-xl font-bold text-gray-800">{title}</h1>
     </div>
   );
 } 

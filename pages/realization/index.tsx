@@ -154,13 +154,14 @@ const RealizationPage: NextPage = () => {
         
         if (!value) return '—';
         
+        const formattedArticle = /^[0-9]+$/.test(value) ? `L${value}` : value;
         const size = row.first_size ? `, ${row.first_size}` : '';
         const color = row.first_color ? `, ${row.first_color}` : '';
         const additional = row.items && row.items.length > 1 ? ` +${row.items.length - 1}` : '';
         
         return (
           <div>
-            {value}{size}{color}{additional}
+            {formattedArticle}{size}{color}{additional}
           </div>
         );
       }

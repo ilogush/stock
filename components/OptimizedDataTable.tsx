@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { debounce } from '../lib/apiOptimizer';
+import { debounce } from '../lib/performanceOptimizer';
 
 interface Column<T> {
   key: keyof T;

@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Фильтруем товары без изображений
-    const productsToHide = productsWithoutImages.filter(product => 
+    const productsToHide = productsWithoutImages.filter((product: any) => 
       !product.product_images || product.product_images.length === 0
     );
 
@@ -44,7 +44,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     console.log(`🚫 Найдено ${productsToHide.length} товаров без изображений для скрытия`);
 
     // Скрываем товары без изображений
-    const productIdsToHide = productsToHide.map(p => p.id);
+    const productIdsToHide = productsToHide.map((p: any) => p.id);
     
     const { error: updateError } = await supabaseAdmin
       .from('products')
@@ -65,7 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       success: true, 
       message: `Скрыто ${productIdsToHide.length} товаров без изображений`,
       hidden_count: productIdsToHide.length,
-      hidden_products: productsToHide.slice(0, 10).map(p => ({
+      hidden_products: productsToHide.slice(0, 10).map((p: any) => ({
         id: p.id,
         article: p.article,
         name: p.name

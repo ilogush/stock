@@ -3,8 +3,11 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { hashPassword } from '../../../lib/auth';
 import { getUserIdFromCookie } from '../../../lib/actionLogger';
 import { logUserAction as actionLogger } from '../../../lib/actionLogger';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
   if (req.method === 'GET') {
@@ -16,7 +19,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (error) {
-        console.error('Ошибка при получении пользователя:', error);
+        log.error('Ошибка при получении пользователя', error as Error, {
+          endpoint: '/api/users/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка при получении пользователя' });
       }
 
@@ -49,10 +54,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (error) {
-        console.error('Ошибка при обновлении пользователя:', error);
+        const actorId = getUserIdFromCookie(req);
+        log.error('Ошибка при обновлении пользователя', error as Error, {
+          endpoint: '/api/users/[id]',
+          userId: actorId || undefined
+        });
         // Логируем ошибку редактирования
         try {
-          const actorId = getUserIdFromCookie(req);
           await actionLogger.userUpdate(actorId || 0, `Ошибка при обновлении пользователя ID ${id}: ${error.message}`);
         } catch {}
         return res.status(500).json({ error: 'Ошибка при обновлении пользователя' });
@@ -82,7 +90,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .limit(1);
 
       if (ordersError) {
-        console.error('Ошибка проверки заказов пользователя:', ordersError);
+        log.error('Ошибка проверки заказов пользователя', ordersError as Error, {
+          endpoint: '/api/users/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка проверки заказов пользователя' });
       }
 
@@ -97,9 +107,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('id', id);
 
       if (error) {
-        console.error('Ошибка при удалении пользователя:', error);
+        const actorId = getUserIdFromCookie(req);
+        log.error('Ошибка при удалении пользователя', error as Error, {
+          endpoint: '/api/users/[id]',
+          userId: actorId || undefined
+        });
         try {
-          const actorId = getUserIdFromCookie(req);
           await actionLogger.userDelete(actorId || 0, `Ошибка удаления пользователя ID ${id}: ${error.message}`);
         } catch {}
         return res.status(500).json({ error: 'Ошибка при удалении пользователя' });
@@ -111,10 +124,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch {}
       return res.status(200).json({ message: 'Пользователь помечен как удаленный' });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при удалении пользователя', error as Error, {
+        endpoint: '/api/users/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}
+
+// Применяем CSRF защиту для PUT/DELETE и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler)
+); 

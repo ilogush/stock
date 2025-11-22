@@ -1,9 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
-import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
+import { withPermissions, RoleChecks, AuthenticatedRequest } from '../../../lib/api/roleAuth';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   const { id } = req.query;
 
   if (req.method === 'GET') {
@@ -239,7 +242,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .order('id');
 
       if (errorByName) {
-        console.error('Ошибка проверки названия цвета:', errorByName);
+        log.error('Ошибка проверки названия цвета', errorByName as Error, {
+          endpoint: '/api/colors/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка проверки названия цвета' });
       }
 
@@ -261,26 +266,37 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .order('id');
 
       if (error) {
-        console.error('Ошибка обновления цвета:', error);
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Редактирование цвета', 'error', `Ошибка: ${error.message}`);
+        log.error('Ошибка обновления цвета', error as Error, {
+          endpoint: '/api/colors/[id]',
+          userId: userId || undefined
+        });
+        if (userId) {
+          await logUserAction(userId, 'Редактирование цвета', 'error', `Ошибка: ${error.message}`);
+        }
         return res.status(500).json({ error: 'Ошибка обновления цвета' });
       }
 
       if (!data || data.length === 0) {
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Редактирование цвета', 'error', 'Цвет не найден');
+        if (userId) {
+          await logUserAction(userId, 'Редактирование цвета', 'error', 'Цвет не найден');
+        }
         return res.status(404).json({ error: 'Цвет не найден' });
       }
 
       // Логируем успешное обновление
       const updateUserId = getUserIdFromCookie(req);
-      await logUserAction(updateUserId, 'Редактирование цвета', 'success', `${name}`);
+      if (updateUserId) {
+        await logUserAction(updateUserId, 'Редактирование цвета', 'success', `${name}`);
+      }
 
       // Возвращаем данные с HEX-кодом из БД
       return res.status(200).json(data[0]);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при обновлении цвета', error as Error, {
+        endpoint: '/api/colors/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -301,7 +317,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       if (totalCount > 0) {
         const deleteUserId = getUserIdFromCookie(req);
-        await logUserAction(deleteUserId, 'Удаление цвета', 'error', `Цвет используется в ${totalCount} товаре(ах)`);
+        if (deleteUserId) {
+          await logUserAction(deleteUserId, 'Удаление цвета', 'error', `Цвет используется в ${totalCount} товаре(ах)`);
+        }
         return res.status(400).json({ 
           error: `Нельзя удалить цвет. Он используется в ${totalCount} товаре(ах)` 
         });
@@ -313,19 +331,28 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .eq('id', parseInt(id as string));
 
       if (error) {
-        console.error('Ошибка удаления цвета:', error);
         const deleteErrorUserId = getUserIdFromCookie(req);
-        await logUserAction(deleteErrorUserId, 'Удаление цвета', 'error', `Ошибка: ${error.message}`);
+        log.error('Ошибка удаления цвета', error as Error, {
+          endpoint: '/api/colors/[id]',
+          userId: deleteErrorUserId || undefined
+        });
+        if (deleteErrorUserId) {
+          await logUserAction(deleteErrorUserId, 'Удаление цвета', 'error', `Ошибка: ${error.message}`);
+        }
         return res.status(500).json({ error: 'Ошибка удаления цвета' });
       }
 
       // Логируем успешное удаление
       const deleteSuccessUserId = getUserIdFromCookie(req);
-      await logUserAction(deleteSuccessUserId, 'Удаление цвета', 'success', `ID: ${id}`);
+      if (deleteSuccessUserId) {
+        await logUserAction(deleteSuccessUserId, 'Удаление цвета', 'success', `ID: ${id}`);
+      }
 
       return res.status(200).json({ message: 'Цвет успешно удалён' });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при удалении цвета', error as Error, {
+        endpoint: '/api/colors/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -333,7 +360,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.status(405).json({ error: 'Метод не разрешен' });
 }
 
-export default withPermissions(
+const handlerWithAuth = withPermissions(
   RoleChecks.canCreateColors, // Минимальные права для просмотра
   'Доступ к цветам ограничен'
-)(handler); 
+)(handler);
+
+// Применяем CSRF защиту для PUT/DELETE и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handlerWithAuth as any) as typeof handlerWithAuth
+); 

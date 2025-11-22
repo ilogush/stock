@@ -3,8 +3,11 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie } from '../../../lib/actionLogger';
 import { logAction } from '../../../lib/actionLogger';
 import { AuthService } from '../../../lib/authService';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Получаем пользователя из заголовка
   const user = await AuthService.requireAuthHeader(req, res);
   if (!user) {
@@ -27,7 +30,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (error) throw error;
       return res.status(200).json({ tasks: data || [] });
     } catch (error) {
-      console.error('Ошибка получения задач:', error);
+      log.error('Ошибка получения задач', error as Error, {
+        endpoint: '/api/tasks',
+        userId: currentUserId
+      });
       return res.status(500).json({ error: 'Ошибка получения задач' });
     }
   }
@@ -61,7 +67,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch {}
       return res.status(201).json(data);
     } catch (error) {
-      console.error('Ошибка создания задачи:', error);
+      log.error('Ошибка создания задачи', error as Error, {
+        endpoint: '/api/tasks',
+        userId: currentUserId
+      });
       try {
         const actorId = getUserIdFromCookie(req) || currentUserId;
         await logAction({ user_id: actorId || 0, action_name: 'Создание задания', status: 'error', details: `Ошибка: ${error instanceof Error ? error.message : String(error)}` });
@@ -71,4 +80,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}
+
+// Применяем CSRF защиту и rate limiting
+// GET запросы не требуют CSRF, но требуют rate limiting
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler)
+); 

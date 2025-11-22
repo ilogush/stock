@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const stockColorNames = new Set();
     const stockColorIds = new Set();
     
-    (receiptItems || []).forEach(item => {
+    (receiptItems || []).forEach((item: any) => {
       if (item.color_id && codeToName.has(item.color_id.toString())) {
         const colorName = codeToName.get(item.color_id.toString());
         if (colorName) {
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const realizationColorNames = new Set();
     const realizationColorIds = new Set();
     
-    (realizationItems || []).forEach(item => {
+    (realizationItems || []).forEach((item: any) => {
       if (item.color_id && codeToName.has(item.color_id.toString())) {
         const colorName = codeToName.get(item.color_id.toString());
         if (colorName) {
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     // 5. Создаем детальную информацию о каждом цвете
-    const colorDetails = allColors.map(color => {
+    const colorDetails = allColors.map((color: any) => {
       const usedIn = [];
       if (stockColorIds.has(color.id)) usedIn.push('склад');
       if (realizationColorIds.has(color.id)) usedIn.push('реализации');
@@ -105,7 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // 6. Находим проблемные цвета (есть на складе, но нет в реализациях)
-    const problematicColors = colorDetails.filter(color => color.is_mismatched);
+    const problematicColors = colorDetails.filter((color: any) => color.is_mismatched);
 
     console.log(`✅ Анализ завершен. Найдено ${problematicColors.length} проблемных цветов`);
 

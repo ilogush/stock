@@ -1,11 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 /**
  * API endpoint для получения отчета по доходам (реализациям)
  * Поддерживает фильтрацию по датам
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Метод не поддерживается' });
   }
@@ -53,7 +55,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: realizations, error: realizationsError } = await realizationQuery;
 
     if (realizationsError) {
-      console.error('Ошибка при получении реализаций:', realizationsError);
+      log.error('Ошибка при получении реализаций', realizationsError as Error, {
+        endpoint: '/api/reports/income'
+      });
       return res.status(500).json({ error: 'Ошибка при получении данных о реализациях' });
     }
 
@@ -68,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const realizationIds = realizations.map(r => r.id);
+    const realizationIds = realizations.map((r: any) => r.id);
 
     // Получаем пользователей (отправители и получатели)
     const userIds = new Set<number>();
@@ -91,70 +95,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // Получаем товары из реализаций (без JOIN)
+    // Получаем товары из реализаций по realization_id
     let realizationItems: any[] | null = null;
-    let itemsError: any = null;
     
     // Проверяем, что есть ID реализаций
     if (realizationIds.length === 0) {
       realizationItems = [];
     } else {
-      // Сначала пробуем по realization_id, если колонка существует
-      try {
-        const { data, error } = await supabaseAdmin
-          .from('realization_items')
-          .select(`
-            id,
-            realization_id,
-            product_id,
-            size_code,
-            color_id,
-            qty
-          `)
-          .in('realization_id', realizationIds);
-        
-        realizationItems = data;
-        itemsError = error;
-      } catch (e: any) {
-        itemsError = e;
-      }
+      const { data: realizationItemsData, error: itemsError } = await supabaseAdmin
+        .from('realization_items')
+        .select(`
+          id,
+          realization_id,
+          product_id,
+          size_code,
+          color_id,
+          qty
+        `)
+        .in('realization_id', realizationIds);
       
-      // Если колонка realization_id не существует, используем связь по времени
-      if (itemsError && (itemsError.code === '42703' || itemsError.message?.includes('realization_id') || itemsError.message?.includes('does not exist'))) {
-        console.log('[API /api/reports/income] Колонка realization_id не существует, используем связь по времени');
-        realizationItems = [];
-        
-        for (const realization of realizations) {
-          const realizationTime = new Date(realization.created_at);
-          const timeStart = new Date(realizationTime.getTime() - 300000); // минус 5 минут
-          const timeEnd = new Date(realizationTime.getTime() + 300000); // плюс 5 минут
-          
-          const { data: timeBasedItems, error: timeError } = await supabaseAdmin
-            .from('realization_items')
-            .select(`
-              id,
-              product_id,
-              size_code,
-              color_id,
-              qty,
-              created_at
-            `)
-            .gte('created_at', timeStart.toISOString())
-            .lte('created_at', timeEnd.toISOString());
-          
-          if (!timeError && timeBasedItems) {
-            // Добавляем realization_id для группировки
-            timeBasedItems.forEach(item => {
-              (item as any).realization_id = realization.id;
-            });
-            realizationItems.push(...timeBasedItems);
-          }
-        }
-        itemsError = null; // Сбрасываем ошибку, так как данные получены
-      } else if (itemsError && itemsError.code !== 'PGRST116') {
-        console.error('[API /api/reports/income] Ошибка при получении товаров по realization_id:', itemsError);
+      if (itemsError) {
+        log.error('Ошибка при получении товаров по realization_id', itemsError as Error, {
+          endpoint: '/api/reports/income'
+        });
         return res.status(500).json({ error: 'Ошибка при получении товаров реализаций' });
       }
+      
+      realizationItems = realizationItemsData;
     }
 
     // Если указан поиск по артикулу, фильтруем товары
@@ -168,7 +135,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .ilike('article', `%${searchTerm}%`);
       
       if (productsByArticle && productsByArticle.length > 0) {
-        const productIds = productsByArticle.map(p => p.id);
+        const productIds = productsByArticle.map((p: any) => p.id);
         filteredRealizationItems = (realizationItems || []).filter(
           (item: any) => productIds.includes(item.product_id)
         );
@@ -198,7 +165,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .in('id', batch);
 
         if (productsError) {
-          console.error('Ошибка при получении товаров:', productsError);
+          log.error('Ошибка при получении товаров', productsError as Error, {
+            endpoint: '/api/reports/income'
+          });
         } else if (products) {
           products.forEach((p: any) => {
             productMap[p.id] = p;
@@ -285,7 +254,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const totalRealizations = reportData.length;
     const totalItems = filteredRealizationItems.length;
-    const totalQuantity = reportData.reduce((sum, r) => sum + r.totalQuantity, 0);
+    const totalQuantity = reportData.reduce((sum: number, r: any) => sum + r.totalQuantity, 0);
 
     return res.status(200).json({
       data: {

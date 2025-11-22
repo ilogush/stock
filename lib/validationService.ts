@@ -48,7 +48,7 @@ export class ValidationService {
   }
 
   static isValidPassword(password: string): boolean {
-    return password && password.length >= 4;
+    return Boolean(password && password.length >= 4);
   }
 
   static validateRequired(value: any, fieldName: string): ValidationResult {

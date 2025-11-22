@@ -2,8 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { getHexFromName } from '../../../lib/colorService';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
       const { name, hex_code } = req.body;
@@ -36,9 +39,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (error) {
-        console.error('Ошибка создания цвета:', error);
         const userId = getUserIdFromCookie(req);
-        if (userId > 0) {
+        log.error('Ошибка создания цвета', error as Error, {
+          endpoint: '/api/colors/create',
+          userId: userId && userId > 0 ? userId : undefined
+        });
+        if (userId && userId > 0) {
           await logUserAction(userId, 'Создание цвета', 'error', `Ошибка: ${error.message}`);
         }
         return res.status(500).json({ error: 'Ошибка создания цвета' });
@@ -46,17 +52,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Логируем успешное создание цвета
       const userId = getUserIdFromCookie(req);
-      if (userId > 0) {
+      if (userId && userId > 0) {
         await logUserAction(userId, 'Создание цвета', 'success', `${normalizedName} (${generatedHexCode})`);
       }
 
       // Возвращаем данные с сгенерированным HEX-кодом
       return res.status(201).json(data);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при создании цвета', error as Error, {
+        endpoint: '/api/colors/create'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler)
+);

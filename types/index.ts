@@ -99,6 +99,8 @@ export interface ReceiptItem {
   size_code: string;
   color_id: number;
   quantity: number;
+  receipt_id?: number; // ID поступления для связи
+  created_at?: string; // Дата создания
   // Дополнительные поля для отображения
   product_name?: string;
   product_article?: string;
@@ -149,6 +151,7 @@ export interface RealizationItem {
   size_code: string;
   color_id: number;
   quantity: number;
+  realization_id?: number; // ID реализации для связи
   created_at: string;
   // Дополнительные поля для отображения
   product_name?: string;

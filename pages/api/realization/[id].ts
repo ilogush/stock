@@ -1,8 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { withAdminOnly } from '../../../lib/api/roleAuth';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
   if (req.method === 'GET') {
@@ -15,16 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
       if (realizationError) {
-        console.error('Ошибка получения реализации:', realizationError);
+        log.error('Ошибка получения реализации', realizationError as Error, {
+          endpoint: '/api/realization/[id]'
+        });
         return res.status(404).json({ error: 'Реализация не найдена' });
       }
 
-      // Получаем позиции реализации
-      // Сначала пробуем по realization_id, если колонка существует
-      let items: any[] | null = null;
-      let itemsError: any = null;
-      
-      const { data, error } = await supabaseAdmin
+      // Получаем позиции реализации по realization_id
+      const { data: items, error: itemsError } = await supabaseAdmin
         .from('realization_items')
         .select(`
           id,
@@ -38,36 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('realization_id', realization.id)
         .order('created_at');
       
-      // Если колонка realization_id не существует или товары не найдены, используем связь по времени
-      if (error && (error.code === '42703' || error.message?.includes('realization_id') || error.message?.includes('does not exist'))) {
-        console.log('Колонка realization_id не существует, используем связь по времени');
-        const realizationTime = new Date(realization.created_at);
-        const timeStart = new Date(realizationTime.getTime() - 300000); // минус 5 минут
-        const timeEnd = new Date(realizationTime.getTime() + 300000); // плюс 5 минут
-        
-        const { data: timeBasedItems, error: timeError } = await supabaseAdmin
-          .from('realization_items')
-          .select(`
-            id,
-            product_id,
-            size_code,
-            qty,
-            color_id,
-            created_at
-          `)
-          .gte('created_at', timeStart.toISOString())
-          .lte('created_at', timeEnd.toISOString())
-          .order('created_at');
-        
-        items = timeBasedItems;
-        itemsError = timeError;
-      } else {
-        items = data;
-        itemsError = error;
-      }
-      
-      if (itemsError && itemsError.code !== '42703') {
-        console.error('Ошибка получения позиций реализации:', itemsError);
+      if (itemsError) {
+        log.error('Ошибка получения позиций реализации', itemsError as Error, {
+          endpoint: '/api/realization/[id]'
+        });
         // Не возвращаем ошибку, просто продолжаем без товаров
       }
 
@@ -98,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!productsError && products) {
           // Получаем бренды
           const brandIds = new Set<number>();
-          products.forEach(product => {
+          products.forEach((product: any) => {
             if (product.brand_id) {
               brandIds.add(product.brand_id);
             }
@@ -112,14 +87,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .in('id', Array.from(brandIds));
             
             if (brands) {
-              brands.forEach(brand => {
+              brands.forEach((brand: any) => {
                 brandMap[brand.id] = { name: brand.name };
               });
             }
           }
           
           // Формируем productMap
-          products.forEach(product => {
+          products.forEach((product: any) => {
             productMap[product.id] = {
               id: product.id,
               name: product.name,
@@ -179,10 +154,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader('Surrogate-Control', 'no-store');
       
       return res.status(200).json(realizationWithItems);
-    } catch (error) {
-      console.error('Серверная ошибка:', error);
-      return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
-    }
+      } catch (error) {
+        log.error('Серверная ошибка при обновлении реализации', error as Error, {
+          endpoint: '/api/realization/[id]'
+        });
+        return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+      }
   }
 
   if (req.method === 'DELETE') {
@@ -212,7 +189,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('realization_id', realizationId);
 
         if (itemsError) {
-          console.error('Ошибка удаления позиций реализации:', itemsError);
+          log.error('Ошибка удаления позиций реализации', itemsError as Error, {
+            endpoint: '/api/realization/[id]'
+          });
           return res.status(500).json({ error: 'Ошибка удаления позиций реализации' });
         }
 
@@ -223,17 +202,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('id', realizationId);
 
         if (realizationError) {
-          console.error('Ошибка удаления реализации:', realizationError);
+          log.error('Ошибка удаления реализации', realizationError as Error, {
+            endpoint: '/api/realization/[id]'
+          });
           return res.status(500).json({ error: 'Ошибка удаления реализации' });
         }
 
         return res.status(200).json({ message: 'Реализация успешно удалена' });
       } catch (error) {
-        console.error('Серверная ошибка при удалении реализации:', error);
+        log.error('Серверная ошибка при удалении реализации', error as Error, {
+          endpoint: '/api/realization/[id]'
+        });
         return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
       }
     })(req, res);
   }
 
   res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}
+
+// Применяем CSRF защиту для DELETE и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
+); 

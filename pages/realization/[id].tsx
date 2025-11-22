@@ -121,32 +121,38 @@ const RealizationDetailPage: NextPage = () => {
 
   return (
     <div>
-      <PageHeader
-        title={`Реализация ${realization.id}`}
-        showBackButton
-        backHref="/realization"
-        action={{
-          label: '',
-          onClick: printDocument,
-          icon: <PrinterIcon className="w-4 h-4" />
-        }}
-      >
-        {hasAnyRole(['admin']) && (
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+        <PageHeader
+          title="Реализация"
+          showBackButton
+          backHref="/realization"
+        />
+        <div className="flex items-center gap-2">
           <button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="btn btn-red text-xs disabled:opacity-50 flex items-center"
+            onClick={printDocument}
+            className="btn text-xs flex items-center justify-center hover:bg-gray-800 hover:text-white no-print"
+            aria-label="Печать"
+            title="Печать"
           >
-            <TrashIcon className="w-4 h-4 mr-1" />
-            {deleting ? 'Удаление...' : 'Удалить'}
+            <PrinterIcon className="w-4 h-4" />
           </button>
-        )}
-      </PageHeader>
+          {hasAnyRole(['admin']) && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="btn btn-red text-xs disabled:opacity-50 flex items-center justify-center no-print"
+              title={deleting ? 'Удаление...' : 'Удалить'}
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="space-y-6 print:space-y-4">
         {/* Информация о реализации */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <span className="text-sm text-gray-500">Номер реализации:</span>
             <div className="font-medium">{realization.id}</div>
@@ -197,7 +203,9 @@ const RealizationDetailPage: NextPage = () => {
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-sm text-gray-900">{index + 1}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.product_name}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-gray-900">{item.article}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-gray-900">
+                      {item.article && /^[0-9]+$/.test(item.article) ? `L${item.article}` : (item.article || '—')}
+                    </td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.brand_name}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.category_name}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.size_name}</td>

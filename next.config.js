@@ -1,16 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Отключаем StrictMode для стабильности
-  reactStrictMode: false,
+  // Включаем StrictMode для обнаружения проблем
+  reactStrictMode: true,
   
-  // Отключаем ESLint во время сборки для ускорения
+  // Включаем ESLint проверки во время сборки
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   
-  // Отключаем TypeScript проверки во время сборки
+  // Включаем TypeScript проверки во время сборки
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   
   // Настройки для development

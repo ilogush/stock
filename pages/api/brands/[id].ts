@@ -2,8 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie, logUserActionDirect as logActionGeneric } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default withPermissions(
+const handler = withPermissions(
   RoleChecks.canManageBrands,
   'Доступ к брендам разрешен только администраторам'
 )(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -21,7 +24,9 @@ export default withPermissions(
         .single();
 
       if (error) {
-        console.error('Ошибка при получении бренда:', error);
+        log.error('Ошибка при получении бренда', error as Error, {
+          endpoint: '/api/brands/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка при получении бренда' });
       }
 
@@ -54,7 +59,9 @@ export default withPermissions(
 
       return res.status(200).json({ brand, managers });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при получении бренда', error as Error, {
+        endpoint: '/api/brands/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -75,9 +82,12 @@ export default withPermissions(
         .single();
 
       if (error) {
-        console.error('Ошибка при обновлении бренда:', error);
+        const actorId = getUserIdFromCookie(req);
+        log.error('Ошибка при обновлении бренда', error as Error, {
+          endpoint: '/api/brands/[id]',
+          userId: actorId || undefined
+        });
         try {
-          const actorId = getUserIdFromCookie(req);
           await logActionGeneric(actorId || 0, 'Редактирование бренда', 'error', `Ошибка обновления бренда ID ${id}: ${error.message}`);
         } catch {}
         return res.status(500).json({ error: 'Ошибка при обновлении бренда' });
@@ -89,10 +99,17 @@ export default withPermissions(
       } catch {}
       return res.status(200).json(data);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при обновлении бренда', error as Error, {
+        endpoint: '/api/brands/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-}); 
+});
+
+// Применяем CSRF защиту для PUT и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
+); 

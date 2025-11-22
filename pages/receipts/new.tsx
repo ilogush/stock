@@ -135,7 +135,7 @@ const NewReceiptPage: NextPage = () => {
         const [brandsRes, categoriesRes, colorsRes, usersRes, productsRes] = await Promise.all([
           fetch('/api/brands'),
           fetch('/api/categories'),
-          fetch('/api/colors'),
+          fetch('/api/colors?limit=1000'),
           fetch('/api/users?limit=1000'),
           fetch('/api/products?limit=10000')
         ]);

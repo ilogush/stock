@@ -44,9 +44,17 @@ export interface NotificationPreferences {
 
 class NotificationService {
   private templates: Map<string, NotificationTemplate> = new Map();
+  private notificationCache: Map<number, { data: Notification[]; timestamp: number }> = new Map();
 
   constructor() {
     this.initializeTemplates();
+  }
+
+  /**
+   * Очищает кэш уведомлений пользователя
+   */
+  private clearUserNotificationCache(userId: number): void {
+    this.notificationCache.delete(userId);
   }
 
   /**
@@ -379,7 +387,7 @@ class NotificationService {
     }
 
     // Очищаем кэш для затронутых пользователей
-    const userIds = [...new Set((data || []).map(n => n.user_id))];
+    const userIds = Array.from(new Set((data || []).map((n: any) => n.user_id)));
 
     return data?.length || 0;
   }
@@ -403,8 +411,7 @@ class NotificationService {
 // Глобальный экземпляр сервиса уведомлений
 export const notificationService = new NotificationService();
 
-// Расширяем cacheKeys для уведомлений
-if (typeof cacheKeys !== 'undefined') {
-  (cacheKeys as any).userNotifications = (userId: number, limit?: number, offset?: number, unreadOnly?: boolean, category?: string) => 
-    `notifications:${userId}:${limit || 'all'}:${offset || 0}:${unreadOnly || false}:${category || 'all'}`;
+// Функция для генерации ключей кэша уведомлений
+export function getNotificationCacheKey(userId: number, limit?: number, offset?: number, unreadOnly?: boolean, category?: string): string {
+  return `notifications:${userId}:${limit || 'all'}:${offset || 0}:${unreadOnly || false}:${category || 'all'}`;
 }

@@ -2,8 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie } from '../../../lib/actionLogger';
 import { logUserAction as actionLogger } from '../../../lib/actionLogger';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
   if (req.method === 'GET') {
@@ -15,13 +18,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (error) {
-        console.error('Ошибка при получении заказа:', error);
+        log.error('Ошибка при получении заказа', error as Error, {
+          endpoint: '/api/orders/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка при получении заказа' });
       }
 
       return res.status(200).json(order);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при получении заказа', error as Error, {
+        endpoint: '/api/orders/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -42,9 +49,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (error) {
-        console.error('Ошибка при обновлении заказа:', error);
+        const actorId = getUserIdFromCookie(req);
+        log.error('Ошибка при обновлении заказа', error as Error, {
+          endpoint: '/api/orders/[id]',
+          userId: actorId || undefined
+        });
         try {
-          const actorId = getUserIdFromCookie(req);
           await actionLogger.orderUpdate(actorId || 0, `Ошибка обновления заказа ID ${id}: ${error.message}`);
         } catch {}
         return res.status(500).json({ error: 'Ошибка при обновлении заказа' });
@@ -56,10 +66,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch {}
       return res.status(200).json(updated);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при обновлении заказа', error as Error, {
+        endpoint: '/api/orders/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}
+
+// Применяем CSRF защиту для PUT и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler)
+); 

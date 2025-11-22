@@ -197,8 +197,8 @@ export function handleAndSendError(
 /**
  * Middleware для обработки ошибок в API роутах
  */
-export function withErrorHandling<T extends any[]>(
-  handler: (...args: T) => Promise<void>
+export function withErrorHandling(
+  handler: (...args: any[]) => Promise<void>
 ) {
   return async (req: any, res: NextApiResponse, ...args: any[]): Promise<void> => {
     try {

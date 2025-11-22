@@ -53,7 +53,7 @@ interface User {
 }
 
 type ReportType = 'receipts' | 'realization' | 'stock' | null;
-type DateRangeType = 'all' | 'month' | 'day' | 'custom';
+type DateRangeType = 'all' | 'month' | 'week' | 'day' | 'custom';
 
 const ReportsPage: NextPage = () => {
   const { showToast } = useToast();
@@ -64,7 +64,10 @@ const ReportsPage: NextPage = () => {
   // Шаг 2: Период
   const [dateRangeType, setDateRangeType] = useState<DateRangeType>('all');
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [endDate, setEndDate] = useState(() => {
+    // По умолчанию текущая дата
+    return new Date().toISOString().split('T')[0];
+  });
   
   // Шаг 3: Пользователи (для реализаций и поступлений)
   const [selectedSenderId, setSelectedSenderId] = useState<number | null>(null);
@@ -249,6 +252,17 @@ const ReportsPage: NextPage = () => {
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
       setStartDate(firstDay.toISOString().split('T')[0]);
       setEndDate(lastDay.toISOString().split('T')[0]);
+    } else if (dateRangeType === 'week') {
+      // Начало недели (понедельник)
+      const dayOfWeek = now.getDay();
+      const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const firstDay = new Date(now.setDate(diff));
+      firstDay.setHours(0, 0, 0, 0);
+      // Конец недели (воскресенье)
+      const lastDay = new Date(firstDay);
+      lastDay.setDate(firstDay.getDate() + 6);
+      setStartDate(firstDay.toISOString().split('T')[0]);
+      setEndDate(lastDay.toISOString().split('T')[0]);
     } else if (dateRangeType === 'day') {
       const today = now.toISOString().split('T')[0];
       setStartDate(today);
@@ -256,8 +270,22 @@ const ReportsPage: NextPage = () => {
     } else if (dateRangeType === 'all') {
       setStartDate('');
       setEndDate('');
+    } else if (dateRangeType === 'custom') {
+      // При выборе "указать даты" устанавливаем дату окончания на текущую, если она не установлена
+      if (!endDate) {
+        setEndDate(new Date().toISOString().split('T')[0]);
+      }
     }
   }, [dateRangeType]);
+
+  // Валидация: дата начала не может быть больше даты окончания
+  useEffect(() => {
+    if (startDate && endDate && startDate > endDate) {
+      showToast('Дата начала не может быть больше даты окончания', 'error');
+      // Автоматически исправляем: устанавливаем дату окончания равной дате начала
+      setEndDate(startDate);
+    }
+  }, [startDate, endDate, showToast]);
 
   // Загружаем категории для склада
   useEffect(() => {
@@ -447,7 +475,7 @@ const ReportsPage: NextPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleSearch]);
 
-  // Обработчик нажатия на кнопку "Сформировать отчет"
+  // Обработчик нажатия на кнопку "Показать отчет"
   const handleGenerateReport = () => {
     if (!reportType) {
       showToast('Выберите тип отчета', 'error');
@@ -519,6 +547,7 @@ const ReportsPage: NextPage = () => {
       color: string;
       color_id: number | null;
       category_id: number | null;
+      product_id: number;
       sizes: Record<string, number>;
       total: number;
     }> = {};
@@ -533,6 +562,7 @@ const ReportsPage: NextPage = () => {
           color: item.color,
           color_id: item.color_id,
           category_id: item.category_id,
+          product_id: item.product_id,
           sizes: {},
           total: 0
         };
@@ -553,7 +583,7 @@ const ReportsPage: NextPage = () => {
       <div className="flex flex-row justify-between items-center gap-2 mb-6 pb-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-gray-800">Отчеты</h1>
         <div className="flex items-center gap-3 no-print">
-          {/* Показываем "Сформировать отчет" до формирования, после - "Экспорт CSV" и "Печать" */}
+          {/* Показываем "Показать отчет" до формирования, после - "Экспорт CSV" и "Печать" */}
           {!reportData ? (
             <button
               onClick={handleGenerateReport}
@@ -561,7 +591,7 @@ const ReportsPage: NextPage = () => {
               className="btn text-xs flex items-center gap-2 hover:bg-gray-800 hover:text-white disabled:opacity-50"
             >
               <PlusIcon className="w-4 h-4" />
-              {loading ? 'Загрузка...' : 'Сформировать отчет'}
+              {loading ? 'Загрузка...' : 'Показать отчет'}
             </button>
           ) : (
             <>
@@ -615,6 +645,16 @@ const ReportsPage: NextPage = () => {
               за месяц
             </button>
             <button
+              onClick={() => setDateRangeType('week')}
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                dateRangeType === 'week'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              }`}
+            >
+              за неделю
+            </button>
+            <button
               onClick={() => setDateRangeType('day')}
               className={`text-xs px-3 py-1 rounded-full border transition-colors ${
                 dateRangeType === 'day'
@@ -663,7 +703,7 @@ const ReportsPage: NextPage = () => {
       </div>
 
       {dateRangeType === 'custom' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 no-print">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 no-print">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Дата начала
@@ -671,6 +711,7 @@ const ReportsPage: NextPage = () => {
                 <input
                   type="date"
                   value={startDate}
+                  max={endDate || undefined}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                 />
@@ -682,6 +723,7 @@ const ReportsPage: NextPage = () => {
                 <input
                   type="date"
                   value={endDate}
+                  min={startDate || undefined}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2"
                 />
@@ -692,7 +734,7 @@ const ReportsPage: NextPage = () => {
       {/* Фильтры - скрыты при печати */}
       <div className="space-y-6 no-print">
         {/* Объединенный блок: Выбор типа отчета и пользователя */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
           {/* Выбор типа отчета */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Тип отчета</label>
@@ -819,6 +861,7 @@ const ReportsPage: NextPage = () => {
                   <table className="table-standard">
                     <thead>
                       <tr>
+                        <th className="table-header no-print">Фото</th>
                         <th className="table-header">Бренд</th>
                         <th className="table-header">Артикул</th>
                         <th className="table-header w-60">Название</th>
@@ -832,26 +875,52 @@ const ReportsPage: NextPage = () => {
                       </tr>
                     </thead>
                     <tbody className="table-body">
-                      {paginatedGrouped.map((row, index) => (
-                        <tr key={`${row.article}_${row.color_id}_${index}`} className="table-row-hover">
-                          <td className="table-cell">{row.brand || '—'}</td>
-                          <td className="table-cell-mono">{row.article}</td>
-                          <td className="table-cell w-60">
-                            <div className="break-words whitespace-normal leading-relaxed">{row.name}</div>
-                          </td>
-                          <td className="table-cell">
-                            <span className="font-medium">{row.color}</span>
-                          </td>
-                          {sizes.map((size) => (
-                            <td key={size} className="table-cell text-center">
-                              <span className={!row.sizes[size] ? 'text-gray-400' : 'font-semibold'}>
-                                {row.sizes[size] || '—'}
-                              </span>
+                      {paginatedGrouped.map((row, index) => {
+                        const imageKey = `${row.product_id}_${row.color_id}`;
+                        const imageUrl = row.color_id 
+                          ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/products/${row.product_id}/${row.color_id}/0.jpg`
+                          : null;
+                        return (
+                          <tr key={`${row.article}_${row.color_id}_${index}`} className="table-row-hover">
+                            <td className="table-cell no-print">
+                              <div className="product-image-container relative rounded overflow-hidden bg-gray-100 w-12 h-12">
+                                {imageUrl && !imageErrors.has(imageKey) ? (
+                                  <img
+                                    src={imageUrl}
+                                    alt={`${row.name} - ${row.color}`}
+                                    width={48}
+                                    height={48}
+                                    className="product-image"
+                                    onError={() => {
+                                      setImageErrors(prev => new Set(prev).add(imageKey));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="product-image-placeholder flex items-center justify-center w-full h-full">
+                                    <PhotoIcon className="w-6 h-6 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
                             </td>
-                          ))}
-                          <td className="table-cell text-center font-semibold">{row.total}</td>
-                        </tr>
-                      ))}
+                            <td className="table-cell">{row.brand || '—'}</td>
+                            <td className="table-cell-mono">{row.article}</td>
+                            <td className="table-cell w-60">
+                              <div className="break-words whitespace-normal leading-relaxed">{row.name}</div>
+                            </td>
+                            <td className="table-cell">
+                              <span className="font-medium">{row.color}</span>
+                            </td>
+                            {sizes.map((size) => (
+                              <td key={size} className="table-cell text-center">
+                                <span className={!row.sizes[size] ? 'text-gray-400' : 'font-semibold'}>
+                                  {row.sizes[size] || '—'}
+                                </span>
+                              </td>
+                            ))}
+                            <td className="table-cell text-center font-semibold">{row.total}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   
@@ -861,10 +930,10 @@ const ReportsPage: NextPage = () => {
                       <div className="mt-4 mb-2 text-sm text-gray-600 border-t border-gray-200 pt-3">
                         <div className="flex justify-between items-center">
                           <span>
-                            Итог: <strong>{totalQty}</strong>
+                            Артикулы: <strong>{totalItems}</strong>
                           </span>
                           <span>
-                            Общее количество позиций: <strong>{totalItems}</strong>
+                            Итог: <strong>{totalQty}</strong>
                           </span>
                         </div>
                       </div>
@@ -931,6 +1000,7 @@ const ReportsPage: NextPage = () => {
                   <table className="table-standard">
                     <thead>
                       <tr>
+                        <th className="table-header no-print">Фото</th>
                         <th className="table-header">Бренд</th>
                         <th className="table-header">Артикул</th>
                         <th className="table-header w-60">Название</th>
@@ -944,26 +1014,52 @@ const ReportsPage: NextPage = () => {
                       </tr>
                     </thead>
                     <tbody className="table-body">
-                      {paginatedGrouped.map((row, index) => (
-                        <tr key={`${row.article}_${row.color_id}_${index}`} className="table-row-hover">
-                          <td className="table-cell">{row.brand || '—'}</td>
-                          <td className="table-cell-mono">{row.article}</td>
-                          <td className="table-cell w-60">
-                            <div className="break-words whitespace-normal leading-relaxed">{row.name}</div>
-                          </td>
-                          <td className="table-cell">
-                            <span className="font-medium">{row.color}</span>
-                          </td>
-                          {sizes.map((size) => (
-                            <td key={size} className="table-cell text-center">
-                              <span className={!row.sizes[size] ? 'text-gray-400' : 'font-semibold'}>
-                                {row.sizes[size] || '—'}
-                              </span>
+                      {paginatedGrouped.map((row, index) => {
+                        const imageKey = `${row.product_id}_${row.color_id}`;
+                        const imageUrl = row.color_id 
+                          ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/products/${row.product_id}/${row.color_id}/0.jpg`
+                          : null;
+                        return (
+                          <tr key={`${row.article}_${row.color_id}_${index}`} className="table-row-hover">
+                            <td className="table-cell no-print">
+                              <div className="product-image-container relative rounded overflow-hidden bg-gray-100 w-12 h-12">
+                                {imageUrl && !imageErrors.has(imageKey) ? (
+                                  <img
+                                    src={imageUrl}
+                                    alt={`${row.name} - ${row.color}`}
+                                    width={48}
+                                    height={48}
+                                    className="product-image"
+                                    onError={() => {
+                                      setImageErrors(prev => new Set(prev).add(imageKey));
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="product-image-placeholder flex items-center justify-center w-full h-full">
+                                    <PhotoIcon className="w-6 h-6 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
                             </td>
-                          ))}
-                          <td className="table-cell text-center font-semibold">{row.total}</td>
-                        </tr>
-                      ))}
+                            <td className="table-cell">{row.brand || '—'}</td>
+                            <td className="table-cell-mono">{row.article}</td>
+                            <td className="table-cell w-60">
+                              <div className="break-words whitespace-normal leading-relaxed">{row.name}</div>
+                            </td>
+                            <td className="table-cell">
+                              <span className="font-medium">{row.color}</span>
+                            </td>
+                            {sizes.map((size) => (
+                              <td key={size} className="table-cell text-center">
+                                <span className={!row.sizes[size] ? 'text-gray-400' : 'font-semibold'}>
+                                  {row.sizes[size] || '—'}
+                                </span>
+                              </td>
+                            ))}
+                            <td className="table-cell text-center font-semibold">{row.total}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   
@@ -973,10 +1069,10 @@ const ReportsPage: NextPage = () => {
                       <div className="mt-4 mb-2 text-sm text-gray-600 border-t border-gray-200 pt-3">
                         <div className="flex justify-between items-center">
                           <span>
-                            Итог: <strong>{totalQty}</strong>
+                            Общее количество позиций: <strong>{totalItems}</strong>
                           </span>
                           <span>
-                            Общее количество позиций: <strong>{totalItems}</strong>
+                            Итог: <strong>{totalQty}</strong>
                           </span>
                         </div>
                       </div>
@@ -1080,7 +1176,7 @@ const ReportsPage: NextPage = () => {
                             Итог: <strong>{totalQty}</strong>
                           </span>
                           <span>
-                            Общее количество позиций: <strong>{stockItems.length}</strong>
+                            Артикулы: <strong>{stockItems.length}</strong>
                           </span>
                         </div>
                       </div>
@@ -1139,6 +1235,30 @@ const ReportsPage: NextPage = () => {
             </table>
           )}
       </div>
+
+      <style jsx>{`
+        .product-image-container {
+          position: relative;
+          overflow: hidden;
+          border-radius: 0.375rem;
+          background-color: #f3f4f6;
+        }
+        
+        .product-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        
+        .product-image-placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          background-color: #f3f4f6;
+        }
+      `}</style>
     </div>
   );
 };

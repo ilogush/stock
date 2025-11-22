@@ -6,8 +6,11 @@ import { createItemResponse, createErrorResponse } from '../../../lib/api/standa
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
 import { normalizeColorId, extractSizeNumber, normalizeSizeCode } from '../../../lib/utils/normalize';
 import { CHILDREN_SIZES, CHILDREN_CATEGORY_ID } from '../../../lib/constants';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default withPermissions(
+const handler = withPermissions(
   RoleChecks.canCreateReceipts,
   'Создание поступлений доступно только кладовщикам'
 )(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
@@ -40,20 +43,38 @@ export default withPermissions(
       .single();
 
     if (receiptError) {
-      console.error('Ошибка при создании поступления:', receiptError);
+      log.error('Ошибка при создании поступления', receiptError as Error, {
+        endpoint: '/api/receipts/create',
+        userId: req.user?.id
+      });
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Создание поступления', 'error', `Ошибка: ${receiptError.message}`);
+      if (userId) {
+        await logUserAction(userId, 'Создание поступления', 'error', `Ошибка: ${receiptError.message}`);
+      }
       return res.status(500).json({ error: receiptError.message || 'Ошибка при создании поступления' });
     }
 
+    // Загружаем все товары для валидации и получения артикулов
+    const productIds = items.map((item: any) => item.product_id);
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from('products')
+      .select('id, name, article, category_id, color_id')
+      .in('id', productIds);
+
+    if (productsError) {
+      log.error('Ошибка при получении товаров', productsError as Error, {
+        endpoint: '/api/receipts/create',
+        userId: req.user?.id
+      });
+      return res.status(500).json({ error: 'Ошибка при получении товаров' });
+    }
+
+    // Создаем мапу product_id -> product для быстрого доступа
+    const productMap = new Map(products?.map((p: any) => [p.id, p]) || []);
+
     // Валидация позиций поступления
     for (const item of items) {
-      // Проверяем существование товара
-      const { data: product } = await supabaseAdmin
-        .from('products')
-        .select('id, name, category_id, color_id')
-        .eq('id', item.product_id)
-        .single();
+      const product = productMap.get(item.product_id) as { category_id?: number; article?: string } | undefined;
 
       if (!product) {
         return res.status(400).json({ 
@@ -66,7 +87,7 @@ export default withPermissions(
       // color_id может быть null для товаров без цвета
 
       // Проверяем детские размеры для детских товаров
-      if (product.category_id === CHILDREN_CATEGORY_ID) {
+      if (product && product.category_id === CHILDREN_CATEGORY_ID) {
         const sizeNumber = extractSizeNumber(item.size_code);
         if (!CHILDREN_SIZES.includes(sizeNumber as any)) {
           return res.status(400).json({ 
@@ -77,22 +98,31 @@ export default withPermissions(
     }
 
     // Создаём позиции поступления
-    const receiptItems = items.map((item: any) => ({
-      product_id: item.product_id,
-      qty: item.quantity || item.qty || 0,
-      size_code: normalizeSizeCode(item.size_code), // Нормализуем размер
-      color_id: normalizeColorId(item.color_id), // Нормализуем цвет
-      receipt_id: receipt.id // Устанавливаем внешний ключ
-    }));
+    const receiptItems = items.map((item: any) => {
+      const product = productMap.get(item.product_id) as { article?: string } | undefined;
+      return {
+        product_id: item.product_id,
+        qty: item.quantity || item.qty || 0,
+        size_code: normalizeSizeCode(item.size_code, product?.article), // Нормализуем размер с учетом артикула
+        color_id: normalizeColorId(item.color_id), // Нормализуем цвет
+        receipt_id: receipt.id // Устанавливаем внешний ключ
+      };
+    });
 
     const { error: itemsError } = await supabaseAdmin
       .from('receipt_items')
       .insert(receiptItems);
 
     if (itemsError) {
-      console.error('Ошибка при создании позиций поступления:', itemsError);
+      log.error('Ошибка при создании позиций поступления', itemsError as Error, {
+        endpoint: '/api/receipts/create',
+        userId: req.user?.id,
+        metadata: { receiptId: receipt.id }
+      });
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Создание поступления', 'error', `Ошибка позиций: ${itemsError.message}`);
+      if (userId) {
+        await logUserAction(userId, 'Создание поступления', 'error', `Ошибка позиций: ${itemsError.message}`);
+      }
       await supabaseAdmin.from('receipts').delete().eq('id', receipt.id);
       return res.status(500).json({ error: itemsError.message || 'Ошибка при создании позиций поступления' });
     }
@@ -116,3 +146,8 @@ export default withPermissions(
     return handleGenericError(error, res, 'receipt creation');
   }
 });
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
+);

@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Метод не поддерживается' });
   }
@@ -16,13 +18,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .gte('updated_at', since);
 
     if (error) {
-      console.error('Ошибка подсчёта онлайн-пользователей:', error);
+      log.error('Ошибка подсчёта онлайн-пользователей', error as Error, {
+        endpoint: '/api/users/online-count'
+      });
       return res.status(500).json({ error: 'Ошибка базы данных' });
     }
 
     return res.status(200).json({ online: count || 0 });
   } catch (err) {
-    console.error('Ошибка сервера:', err);
+    log.error('Ошибка сервера при подсчёте онлайн-пользователей', err as Error, {
+      endpoint: '/api/users/online-count'
+    });
     return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
-} 
+}
+
+// Применяем rate limiting для GET запросов
+export default withRateLimit(RateLimitConfigs.READ)(handler); 

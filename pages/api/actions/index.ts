@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Метод не поддерживается' });
   }
@@ -10,10 +12,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ОТКЛЮЧАЕМ КЭШИРОВАНИЕ - данные загружаются в реальном времени
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     
-    const { page = 1, limit = 20, search = '' } = req.query;
+    const { page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
-
-
 
     let query = supabaseAdmin
       .from('user_actions')
@@ -28,21 +28,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `, { count: 'exact' })
       .order('created_at', { ascending: false });
 
-
-
     // Добавляем пагинацию
     query = query.range(offset, offset + Number(limit) - 1);
 
     const { data: actions, error, count } = await query;
 
-
-
     if (error) {
-      console.error('Ошибка загрузки действий:', error);
+      log.error('Ошибка загрузки действий', error as Error, {
+        endpoint: '/api/actions'
+      });
       return res.status(500).json({ error: 'Ошибка загрузки действий' });
     }
-
-
 
     const totalPages = Math.ceil((count || 0) / Number(limit));
 
@@ -57,7 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
   } catch (error) {
-    console.error('Ошибка API действий:', error);
+    log.error('Ошибка API действий', error as Error, {
+      endpoint: '/api/actions'
+    });
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
-} 
+}
+
+// Применяем rate limiting для публичного endpoint чтения
+export default withRateLimit(RateLimitConfigs.READ)(handler); 

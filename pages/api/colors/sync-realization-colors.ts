@@ -29,8 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Ошибка при получении данных склада' });
     }
 
-    const stockColorIds = new Set();
-    (receiptItems || []).forEach(item => {
+    const stockColorIds = new Set<number>();
+    (receiptItems || []).forEach((item: any) => {
       if (item.color_id) {
         stockColorIds.add(item.color_id);
       }
@@ -46,15 +46,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Ошибка при получении данных реализаций' });
     }
 
-    const realizationColorIds = new Set();
-    (realizationItems || []).forEach(item => {
+    const realizationColorIds = new Set<number>();
+    (realizationItems || []).forEach((item: any) => {
       if (item.color_id) {
         realizationColorIds.add(item.color_id);
       }
     });
 
     // 3. Находим цвета, которые есть на складе, но нет в реализациях
-    const missingColorIds = Array.from(stockColorIds).filter(colorId => 
+    const missingColorIds = Array.from(stockColorIds).filter((colorId: number) => 
       !realizationColorIds.has(colorId)
     );
 
@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (insertError) {
           console.error(`Ошибка при добавлении цвета ${colorId} в реализации:`, insertError);
         } else {
-          const colorName = codeToName.get(colorId.toString()) || `Цвет ID ${colorId}`;
+          const colorName = codeToName.get(String(colorId)) || `Цвет ID ${colorId}`;
           addedColors.push({
             id: colorId,
             name: colorName

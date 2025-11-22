@@ -62,7 +62,7 @@ export default function NewProduct() {
       const [brandsRes, categoriesRes, colorsRes] = await Promise.all([
         fetch('/api/brands'),
         fetch('/api/categories'),
-        fetch('/api/colors?limit=100')
+        fetch('/api/colors?limit=1000')
       ]);
 
       const [brandsData, categoriesData, colorsData] = await Promise.all([

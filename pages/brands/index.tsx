@@ -40,14 +40,6 @@ const BrandsPage: NextPage = () => {
   const [loading, setLoading] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Проверка прав доступа - только администратор (role_id === 1)
-  useEffect(() => {
-    if (user && user.role_id !== 1) {
-      router.push('/');
-      showToast('Доступ к брендам разрешен только администраторам', 'error');
-    }
-  }, [user, router, showToast]);
-
   const load = async (q?: string) => {
     try {
       setLoading(true);
@@ -66,33 +58,6 @@ const BrandsPage: NextPage = () => {
       setLoading(false);
     }
   };
-
-  // Если пользователь не администратор, не показываем страницу
-  if (user && user.role_id !== 1) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-medium mb-2">Доступ запрещён</div>
-          <div className="text-gray-600">Доступ к брендам разрешен только администраторам</div>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    // Получаем поисковый запрос из URL при загрузке страницы
-    const urlSearchQuery = router.query.search as string;
-    if (urlSearchQuery) {
-      setSearchQuery(urlSearchQuery);
-    }
-
-    // Загружаем данные только один раз при монтировании
-    load(urlSearchQuery);
-  }, []); // Убираем зависимость от router.query.search
-
-  // Убираем дублирование - поиск происходит на сервере, клиентская фильтрация не нужна
-  const total = brands.length;
-  const sliced = brands.slice((page - 1) * limit, page * limit);
 
   const handlePageSizeChange = (newLimit: number) => {
     setLimit(newLimit);
@@ -129,10 +94,45 @@ const BrandsPage: NextPage = () => {
     })();
   }, 500);
 
+  // Проверка прав доступа - только администратор (role_id === 1)
+  useEffect(() => {
+    if (user && user.role_id !== 1) {
+      router.push('/');
+      showToast('Доступ к брендам разрешен только администраторам', 'error');
+    }
+  }, [user, router, showToast]);
+
+  useEffect(() => {
+    // Получаем поисковый запрос из URL при загрузке страницы
+    const urlSearchQuery = router.query.search as string;
+    if (urlSearchQuery) {
+      setSearchQuery(urlSearchQuery);
+    }
+
+    // Загружаем данные только один раз при монтировании
+    load(urlSearchQuery);
+  }, []); // Убираем зависимость от router.query.search
+
   useEffect(() => {
     debouncedSearch(searchQuery);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
+
+  // Убираем дублирование - поиск происходит на сервере, клиентская фильтрация не нужна
+  const total = brands.length;
+  const sliced = brands.slice((page - 1) * limit, page * limit);
+
+  // Если пользователь не администратор, не показываем страницу
+  if (user && user.role_id !== 1) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="text-red-500 text-lg font-medium mb-2">Доступ запрещён</div>
+          <div className="text-gray-600">Доступ к брендам разрешен только администраторам</div>
+        </div>
+      </div>
+    );
+  }
 
     // Убираем автоматическое обновление при возврате на страницу - это создает лишние запросы
 

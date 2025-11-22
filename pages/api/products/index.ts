@@ -9,6 +9,8 @@ import {
 } from '../../../lib/api/standardResponse';
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
 import { withPerformanceTracking } from '../../../lib/performanceTracker';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
@@ -155,7 +157,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .order('created_at', { ascending: true });
 
         if (imagesError) {
-          console.error('Ошибка загрузки изображений:', imagesError);
+          log.error('Ошибка загрузки изображений', imagesError as Error, {
+            endpoint: '/api/products',
+            metadata: { productIds: productIds.slice(0, 5) }
+          });
         } else {
           imagesByProductId = (allImages || []).reduce((acc: Record<number, string[]>, row: any) => {
             const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') || '';
@@ -182,7 +187,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .in('id', colorIds);
 
         if (colorsError) {
-          console.error('Ошибка загрузки цветов:', colorsError);
+          log.error('Ошибка загрузки цветов', colorsError as Error, {
+            endpoint: '/api/products'
+          });
         } else {
           (colorsData || []).forEach((c: any) => {
             colorNameByKey[c.id.toString()] = normalizeColorName(c.name);
@@ -249,4 +256,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 // 📊 Экспортируем с мониторингом производительности
-export default withPerformanceTracking(handler, '/api/products');
+// Применяем rate limiting для публичного endpoint чтения
+export default withRateLimit(RateLimitConfigs.READ)(
+  withPerformanceTracking(handler, '/api/products')
+);

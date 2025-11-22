@@ -1,11 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { notificationService } from '../../../lib/features/notifications';
 import { withApiMiddleware, apiConfigs, handleDatabaseError, sendErrorResponse } from '../../../lib/unified';
+import { AuthenticatedRequest } from '../../../lib/api/roleAuth';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 
 /**
  * API эндпоинт для работы с уведомлениями
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
       const { limit = '20', offset = '0', unread_only, category } = req.query;
@@ -74,4 +77,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 }
 
-export default handler;
+// Применяем CSRF защиту для POST и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
+);

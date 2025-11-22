@@ -106,20 +106,25 @@ const ReceiptDetailPage: NextPage = () => {
 
   return (
     <div>
-      <PageHeader
-        title={`Поступление ${receipt.id}`}
-        showBackButton
-        backHref="/receipts"
-        action={{
-          label: '',
-          onClick: printDocument,
-          icon: <PrinterIcon className="w-4 h-4" />
-        }}
-      />
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+        <PageHeader
+          title="Поступление"
+          showBackButton
+          backHref="/receipts"
+        />
+        <button
+          onClick={printDocument}
+          className="btn text-xs flex items-center justify-center hover:bg-gray-800 hover:text-white no-print"
+          aria-label="Печать"
+          title="Печать"
+        >
+          <PrinterIcon className="w-4 h-4" />
+        </button>
+      </div>
 
       <div className="space-y-6 print:space-y-4">
         {/* Информация о поступлении */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <span className="text-sm text-gray-500">Номер поступления:</span>
             <div className="font-medium">{receipt.id}</div>
@@ -169,7 +174,11 @@ const ReceiptDetailPage: NextPage = () => {
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-sm text-gray-900">{index + 1}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.product?.name || 'Неизвестно'}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-gray-900">{item.product?.article || '-'}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-gray-900">
+                      {item.product?.article && /^[0-9]+$/.test(item.product.article) 
+                        ? `L${item.product.article}` 
+                        : (item.product?.article || '-')}
+                    </td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.product?.brand?.name || '-'}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.size_code}</td>
                     <td className="px-3 py-2 text-sm text-gray-900">{item.color_name || '—'}</td>

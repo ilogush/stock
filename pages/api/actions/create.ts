@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Метод не поддерживается' });
   }
@@ -26,14 +29,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
     if (error) {
-      console.error('Ошибка создания действия:', error);
+      log.error('Ошибка создания действия', error as Error, {
+        endpoint: '/api/actions/create'
+      });
       return res.status(500).json({ error: 'Ошибка создания действия' });
     }
 
     res.status(201).json({ action: data });
 
   } catch (error) {
-    console.error('Ошибка API создания действия:', error);
+    log.error('Ошибка API создания действия', error as Error, {
+      endpoint: '/api/actions/create'
+    });
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
-} 
+}
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler)
+); 

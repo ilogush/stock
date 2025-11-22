@@ -7,6 +7,8 @@ import {
   sendErrorResponse
 } from '../../../lib/unified';
 import { DEFAULT_PAGE_SIZE } from '../../../lib/constants';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 /**
  * API роут для API поступлений
@@ -56,70 +58,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       let totalsByReceipt: Record<number, number> = {};
       
       if (filteredItems.length > 0) {
-        const receiptIds = filteredItems.map(item => item.id).filter(id => id != null);
+        const receiptIds = filteredItems.map((item: any) => item.id).filter((id: any) => id != null);
         
         if (receiptIds.length > 0) {
-          // Получаем receipt_items
-          // Сначала пробуем по receipt_id, если колонка существует
-          let allReceiptItems: any[] | null = null;
-          let itemsError: any = null;
-          
-          try {
-            const { data, error } = await supabaseAdmin
-              .from('receipt_items')
-              .select(`
-                id,
-                product_id,
-                size_code,
-                qty,
-                color_id,
-                created_at,
-                receipt_id
-              `)
-              .in('receipt_id', receiptIds);
-            
-            allReceiptItems = data;
-            itemsError = error;
-          } catch (e: any) {
-            itemsError = e;
-          }
-          
-          // Если колонка receipt_id не существует, используем связь по времени
-          if (itemsError && (itemsError.code === '42703' || itemsError.message?.includes('receipt_id') || itemsError.message?.includes('does not exist'))) {
-            console.log('Колонка receipt_id не существует, используем связь по времени');
-            allReceiptItems = [];
-            
-            for (const receipt of filteredItems) {
-              const receiptTime = new Date(receipt.created_at);
-              const timeStart = new Date(receiptTime.getTime() - 300000); // минус 5 минут
-              const timeEnd = new Date(receiptTime.getTime() + 300000); // плюс 5 минут
-              
-              const { data: timeBasedItems, error: timeError } = await supabaseAdmin
-                .from('receipt_items')
-                .select(`
-                  id,
-                  product_id,
-                  size_code,
-                  qty,
-                  color_id,
-                  created_at
-                `)
-                .gte('created_at', timeStart.toISOString())
-                .lte('created_at', timeEnd.toISOString());
-              
-              if (!timeError && timeBasedItems) {
-                // Добавляем receipt_id для группировки
-                timeBasedItems.forEach(item => {
-                  (item as any).receipt_id = receipt.id;
-                });
-                allReceiptItems.push(...timeBasedItems);
-              }
-            }
-            itemsError = null; // Сбрасываем ошибку, так как данные получены
-          } else if (itemsError) {
-            console.error('Ошибка при получении товаров по receipt_id:', itemsError);
-            // Не возвращаем ошибку, просто продолжаем без товаров
-          }
+        // Получаем receipt_items по receipt_id
+        const { data: allReceiptItems, error: itemsError } = await supabaseAdmin
+          .from('receipt_items')
+          .select(`
+            id,
+            product_id,
+            size_code,
+            qty,
+            color_id,
+            created_at,
+            receipt_id
+          `)
+          .in('receipt_id', receiptIds);
+        
+        if (itemsError) {
+          log.error('Ошибка при получении товаров по receipt_id', itemsError as Error, {
+            endpoint: '/api/receipts'
+          });
+          // Не возвращаем ошибку, просто продолжаем без товаров
+        }
         
           // Затем получаем products отдельно
           const productIds = new Set<number>();
@@ -139,7 +100,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               .in('id', Array.from(productIds));
             
             if (products) {
-              products.forEach(product => {
+              products.forEach((product: any) => {
                 productMap[product.id] = product;
               });
             }
@@ -156,10 +117,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           
           // Группируем по receipt_id
           if (allReceiptItems && Array.isArray(allReceiptItems) && allReceiptItems.length > 0) {
-            filteredItems.forEach(receipt => {
-              const receiptItems = allReceiptItems.filter(item => item && item.receipt_id === receipt.id);
+            filteredItems.forEach((receipt: any) => {
+              const receiptItems = allReceiptItems.filter((item: any) => item && item.receipt_id === receipt.id);
               itemsByReceipt[receipt.id] = receiptItems;
-              totalsByReceipt[receipt.id] = receiptItems.reduce((sum, item) => sum + (item.qty || 0), 0);
+              totalsByReceipt[receipt.id] = receiptItems.reduce((sum: number, item: any) => sum + (item.qty || 0), 0);
             });
           }
         }
@@ -183,7 +144,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .in('id', Array.from(allColorIds));
         
         if (colors) {
-          colors.forEach(color => {
+          colors.forEach((color: any) => {
             colorMap[color.id] = color.name;
           });
         }
@@ -236,12 +197,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 }
 
-// Экспортируем обработчик с унифицированным middleware
-export default withApiMiddleware(
-  apiConfigs.list('receipts'),
-  handler,
-  {
-    logging: true,
-    performance: true
-  }
+// Применяем rate limiting для публичного endpoint чтения
+export default withRateLimit(RateLimitConfigs.READ)(
+  withApiMiddleware(
+    apiConfigs.list('receipts'),
+    handler,
+    {
+      logging: true,
+      performance: true
+    }
+  )
 );

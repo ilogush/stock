@@ -2,8 +2,11 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie } from '../../../lib/actionLogger';
 import { logAction, ActionTypes } from '../../../lib/actionLogger';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'id обязательен' });
 
@@ -23,7 +26,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (taskError) {
-        console.error('Ошибка получения задания:', taskError);
+        log.error('Ошибка получения задания', taskError as Error, {
+          endpoint: '/api/tasks/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка получения задания' });
       }
 
@@ -41,7 +46,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .eq('id', id);
 
         if (updateError) {
-          console.error('Ошибка обновления статуса:', updateError);
+          log.error('Ошибка обновления статуса', updateError as Error, {
+            endpoint: '/api/tasks/[id]'
+          });
         } else {
           // Логируем действие
           try {
@@ -61,7 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.status(200).json(task);
     } catch (error) {
-      console.error('Ошибка обработки запроса:', error);
+      log.error('Ошибка обработки запроса', error as Error, {
+        endpoint: '/api/tasks/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -113,4 +122,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}
+
+// Применяем CSRF защиту для PUT и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler)
+); 

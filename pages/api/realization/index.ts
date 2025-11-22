@@ -7,6 +7,8 @@ import {
   sendErrorResponse
 } from '../../../lib/unified';
 import { DEFAULT_PAGE_SIZE } from '../../../lib/constants';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
 /**
  * API роут для API реализации
@@ -55,67 +57,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       let itemsByRealization: Record<number, any[]> = {};
       
       if (filteredItems.length > 0) {
-        const realizationIds = filteredItems.map(item => item.id);
+        const realizationIds = filteredItems.map((item: any) => item.id);
         
-        // Получаем realization_items
-        // Сначала пробуем по realization_id, если колонка существует
-        let allRealizationItems: any[] | null = null;
-        let itemsError: any = null;
+        // Получаем realization_items по realization_id
+        const { data: allRealizationItems, error: itemsError } = await supabaseAdmin
+          .from('realization_items')
+          .select(`
+            id,
+            product_id,
+            size_code,
+            qty,
+            color_id,
+            created_at,
+            realization_id
+          `)
+          .in('realization_id', realizationIds);
         
-        try {
-          const { data, error } = await supabaseAdmin
-            .from('realization_items')
-            .select(`
-              id,
-              product_id,
-              size_code,
-              qty,
-              color_id,
-              created_at,
-              realization_id
-            `)
-            .in('realization_id', realizationIds);
-          
-          allRealizationItems = data;
-          itemsError = error;
-        } catch (e: any) {
-          itemsError = e;
-        }
-        
-        // Если колонка realization_id не существует, используем связь по времени
-        if (itemsError && (itemsError.code === '42703' || itemsError.message?.includes('realization_id') || itemsError.message?.includes('does not exist'))) {
-          console.log('Колонка realization_id не существует, используем связь по времени');
-          allRealizationItems = [];
-          
-          for (const realization of filteredItems) {
-            const realizationTime = new Date(realization.created_at);
-            const timeStart = new Date(realizationTime.getTime() - 300000); // минус 5 минут
-            const timeEnd = new Date(realizationTime.getTime() + 300000); // плюс 5 минут
-            
-            const { data: timeBasedItems, error: timeError } = await supabaseAdmin
-              .from('realization_items')
-              .select(`
-                id,
-                product_id,
-                size_code,
-                qty,
-                color_id,
-                created_at
-              `)
-              .gte('created_at', timeStart.toISOString())
-              .lte('created_at', timeEnd.toISOString());
-            
-            if (!timeError && timeBasedItems) {
-              // Добавляем realization_id для группировки
-              timeBasedItems.forEach(item => {
-                (item as any).realization_id = realization.id;
-              });
-              allRealizationItems.push(...timeBasedItems);
-            }
-          }
-          itemsError = null; // Сбрасываем ошибку, так как данные получены
-        } else if (itemsError && itemsError.code !== '42703') {
-          console.error('Ошибка при получении товаров:', itemsError);
+        if (itemsError) {
+          log.error('Ошибка при получении товаров по realization_id', itemsError as Error, {
+            endpoint: '/api/realization'
+          });
           // Не возвращаем ошибку, просто продолжаем без товаров
         }
         
@@ -137,7 +98,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             .in('id', Array.from(productIds));
           
           if (products) {
-            products.forEach(product => {
+            products.forEach((product: any) => {
               productMap[product.id] = product;
             });
           }
@@ -154,8 +115,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         
         // Группируем по realization_id
         if (allRealizationItems && allRealizationItems.length > 0) {
-          filteredItems.forEach(realization => {
-            const realizationItems = allRealizationItems.filter(item => item.realization_id === realization.id);
+          filteredItems.forEach((realization: any) => {
+            const realizationItems = allRealizationItems.filter((item: any) => item.realization_id === realization.id);
             itemsByRealization[realization.id] = realizationItems;
           });
         }
@@ -179,7 +140,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           .in('id', Array.from(allColorIds));
         
         if (colors) {
-          colors.forEach(color => {
+          colors.forEach((color: any) => {
             colorMap[color.id] = color.name;
           });
         }
@@ -261,12 +222,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 }
 
-// Экспортируем обработчик с унифицированным middleware
-export default withApiMiddleware(
-  apiConfigs.list('realization'),
-  handler,
-  {
-    logging: true,
-    performance: true
-  }
+// Применяем rate limiting для публичного endpoint чтения
+export default withRateLimit(RateLimitConfigs.READ)(
+  withApiMiddleware(
+    apiConfigs.list('realization'),
+    handler,
+    {
+      logging: true,
+      performance: true
+    }
+  )
 );

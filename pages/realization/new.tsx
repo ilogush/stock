@@ -48,6 +48,8 @@ const NewRealizationPage = () => {
   const [stock, setStock] = useState<ProductStock[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<RealizationItem[]>([]);
+  const [allSizes, setAllSizes] = useState<{code: string}[]>([]); // Все размеры категории
+  const [selectedProductCategory, setSelectedProductCategory] = useState<number | null>(null); // Категория выбранного товара
   
   const [form, setForm] = useState({
     recipient_id: '',
@@ -655,7 +657,9 @@ const NewRealizationPage = () => {
                     <React.Fragment key={item.id}>
                       <tr>
                         <td className="px-3 py-2 text-sm text-gray-900">{item.product_name}</td>
-                        <td className="px-3 py-2 text-sm text-gray-900 font-mono">{item.article}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900 font-mono">
+                          {item.article && /^[0-9]+$/.test(item.article) ? `L${item.article}` : (item.article || '—')}
+                        </td>
                         <td className="px-3 py-2 text-sm text-gray-900">{item.size_code}</td>
                         <td className="px-3 py-2 text-sm text-gray-900">{item.color_name}</td>
                         <td className="px-3 py-2 text-sm text-gray-900">

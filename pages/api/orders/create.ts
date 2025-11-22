@@ -3,8 +3,11 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { validateStockForItems } from '../../../lib/stockValidator';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { normalizeColorId, normalizeSizeCode } from '../../../lib/utils/normalize';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
       const { customer_name, customer_phone, items, notes } = req.body;
@@ -49,7 +52,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (orderError) {
-        console.error('Ошибка создания заказа:', orderError);
+        log.error('Ошибка создания заказа', orderError as Error, {
+          endpoint: '/api/orders/create'
+        });
         return res.status(500).json({ error: 'Ошибка создания заказа' });
       }
 
@@ -68,7 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .insert(orderItems);
 
       if (itemsError) {
-        console.error('Ошибка создания позиций заказа:', itemsError);
+        log.error('Ошибка создания позиций заказа', itemsError as Error, {
+          endpoint: '/api/orders/create'
+        });
         return res.status(500).json({ error: 'Ошибка создания позиций заказа' });
       }
 
@@ -77,7 +84,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Логируем создание заказа
       const userId = getUserIdFromCookie(req);
-      await logUserAction(userId, 'Создание заказа', 'success', `Создан заказ №${order.id} для ${customer_name}`);
+      if (userId) {
+        await logUserAction(userId, 'Создание заказа', 'success', `Создан заказ №${order.id} для ${customer_name}`);
+      }
 
       return res.status(201).json({
         order,
@@ -85,10 +94,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при создании заказа', error as Error, {
+        endpoint: '/api/orders/create'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler)
+);

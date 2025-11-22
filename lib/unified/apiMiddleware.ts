@@ -22,6 +22,7 @@ export interface ApiConfig {
     windowMs: number;
     max: number;
   };
+  cache?: string;
 }
 
 /**

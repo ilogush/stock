@@ -181,7 +181,7 @@ class AnalyticsService {
     const totalProducts = productsResult.count || 0;
     const totalOrders = ordersResult.count || 0;
     const totalUsers = usersResult.count || 0;
-    const totalRevenue = (revenueResult.data || []).reduce((sum, order) => sum + (order.total_amount || 0), 0);
+    const totalRevenue = (revenueResult.data || []).reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     return {
@@ -226,8 +226,8 @@ class AnalyticsService {
       return ((current - previous) / previous) * 100;
     };
 
-    const currentRevenueSum = (currentRevenue.data || []).reduce((sum, order) => sum + (order.total_amount || 0), 0);
-    const lastMonthRevenueSum = (lastMonthRevenue.data || []).reduce((sum, order) => sum + (order.total_amount || 0), 0);
+    const currentRevenueSum = (currentRevenue.data || []).reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
+    const lastMonthRevenueSum = (lastMonthRevenue.data || []).reduce((sum: number, order: any) => sum + (order.total_amount || 0), 0);
 
     return {
       ordersGrowth: calculateGrowth(currentOrders.count || 0, lastMonthOrders.count || 0),
@@ -282,7 +282,7 @@ class AnalyticsService {
 
     // Обрабатываем топ товары
     const productSales = new Map<string, { sales: number; revenue: number }>();
-    (topProductsResult.data || []).forEach(item => {
+    (topProductsResult.data || []).forEach((item: any) => {
       const productName = item.product?.name || 'Неизвестный товар';
       const existing = productSales.get(productName) || { sales: 0, revenue: 0 };
       productSales.set(productName, {
@@ -293,7 +293,7 @@ class AnalyticsService {
 
     // Обрабатываем топ категории
     const categorySales = new Map<string, { sales: number; revenue: number }>();
-    (topCategoriesResult.data || []).forEach(item => {
+    (topCategoriesResult.data || []).forEach((item: any) => {
       const categoryName = item.product?.category?.name || 'Без категории';
       const existing = categorySales.get(categoryName) || { sales: 0, revenue: 0 };
       categorySales.set(categoryName, {
@@ -304,7 +304,7 @@ class AnalyticsService {
 
     // Обрабатываем топ пользователей
     const userSales = new Map<string, { orders: number; revenue: number }>();
-    (topUsersResult.data || []).forEach(order => {
+    (topUsersResult.data || []).forEach((order: any) => {
       const userName = order.user ? `${order.user.first_name} ${order.user.last_name}` : 'Неизвестный пользователь';
       const existing = userSales.get(userName) || { orders: 0, revenue: 0 };
       userSales.set(userName, {

@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
   if (req.method === 'GET') {
@@ -18,16 +21,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (recErr || !receiptRow) {
-        console.error('Ошибка при получении поступления:', recErr);
+        log.error('Ошибка при получении поступления', recErr as Error, {
+          endpoint: '/api/receipts/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка при получении поступления' });
       }
 
-      // Получаем позиции поступления
-      // Сначала пробуем по receipt_id, если колонка существует
-      let itemsRows: any[] | null = null;
-      let itemsErr: any = null;
-      
-      const { data, error } = await supabaseAdmin
+      // Получаем позиции поступления по receipt_id
+      const { data: itemsRows, error: itemsErr } = await supabaseAdmin
         .from('receipt_items')
         .select(`
           id,
@@ -40,34 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `)
         .eq('receipt_id', receiptRow.id);
       
-      // Если колонка receipt_id не существует, используем связь по времени
-      if (error && (error.code === '42703' || error.message?.includes('receipt_id') || error.message?.includes('does not exist'))) {
-        console.log('Колонка receipt_id не существует, используем связь по времени');
-        const receiptTime = new Date(receiptRow.created_at);
-        const timeStart = new Date(receiptTime.getTime() - 300000); // минус 5 минут
-        const timeEnd = new Date(receiptTime.getTime() + 300000); // плюс 5 минут
-        
-        const { data: timeBasedItems, error: timeError } = await supabaseAdmin
-          .from('receipt_items')
-          .select(`
-            id,
-            product_id,
-            size_code,
-            qty,
-            color_id,
-            created_at
-          `)
-          .gte('created_at', timeStart.toISOString())
-          .lte('created_at', timeEnd.toISOString());
-        
-        itemsRows = timeBasedItems;
-        itemsErr = timeError;
-      } else {
-        itemsRows = data;
-        itemsErr = error;
-      }
-      
-      if (itemsErr && itemsErr.code !== '42703') {
+      if (itemsErr) {
         console.error('Ошибка при получении позиций:', itemsErr);
         // Не возвращаем ошибку, просто продолжаем без товаров
       }
@@ -99,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!productsError && products) {
           // Получаем бренды
           const brandIds = new Set<number>();
-          products.forEach(product => {
+          products.forEach((product: any) => {
             if (product.brand_id) {
               brandIds.add(product.brand_id);
             }
@@ -113,14 +87,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               .in('id', Array.from(brandIds));
             
             if (brands) {
-              brands.forEach(brand => {
+              brands.forEach((brand: any) => {
                 brandMap[brand.id] = { name: brand.name };
               });
             }
           }
           
           // Формируем productMap
-          products.forEach(product => {
+          products.forEach((product: any) => {
             productMap[product.id] = {
               id: product.id,
               name: product.name,
@@ -184,10 +158,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.status(200).json({ receipt });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при работе с поступлением', error as Error, {
+        endpoint: '/api/receipts/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-} 
+}
+
+// Применяем CSRF защиту для DELETE и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler)
+); 

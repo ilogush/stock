@@ -5,8 +5,11 @@ import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../..
 import { withManagement, AuthenticatedRequest, logAccess } from '../../../lib/api/roleAuth';
 import { createItemResponse, createErrorResponse } from '../../../lib/api/standardResponse';
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default withManagement(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+const handler = withManagement(async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
       // 🔒 Логируем доступ к созданию пользователя
@@ -33,9 +36,14 @@ export default withManagement(async function handler(req: AuthenticatedRequest, 
         .single();
 
       if (error) {
-        console.error('Ошибка при создании пользователя:', error);
+        log.error('Ошибка при создании пользователя', error as Error, {
+          endpoint: '/api/users/create',
+          userId: getUserIdFromCookie(req) || undefined
+        });
         const userId = getUserIdFromCookie(req);
-        await logUserAction(userId, 'Создание пользователя', 'error', `Ошибка: ${error.message}`);
+        if (userId) {
+          await logUserAction(userId, 'Создание пользователя', 'error', `Ошибка: ${error.message}`);
+        }
         
         if (error.code === '23505') {
           return res.status(400).json({ error: 'Пользователь с таким email уже существует' });
@@ -65,4 +73,9 @@ export default withManagement(async function handler(req: AuthenticatedRequest, 
   // Неподдерживаемый метод
   const errorResponse = createErrorResponse('Метод не поддерживается');
   return res.status(405).json(errorResponse);
-}); 
+});
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
+); 

@@ -453,7 +453,7 @@ const Dashboard: NextPage = () => {
   return (
     <>
       {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
         {stats.map((s) => {
           const cardLink = getCardLink(s.label);
           
@@ -585,7 +585,9 @@ const Dashboard: NextPage = () => {
                               <div className="font-medium">{t.title}</div>
                               <div className="text-sm opacity-90">{t.description}</div>
                               {t.product_article && (
-                                <div className="text-xs opacity-75 mt-1">Артикул: {t.product_article}</div>
+                                <div className="text-xs opacity-75 mt-1">
+                                  Артикул: {/^[0-9]+$/.test(t.product_article) ? `L${t.product_article}` : t.product_article}
+                                </div>
                               )}
                               {t.issue && (
                                 <div className="text-xs text-red-600 mt-1">Проблема: {t.issue}</div>

@@ -28,7 +28,7 @@ async function addColumnsAndFillData() {
       console.log('   ALTER TABLE receipt_items ADD COLUMN IF NOT EXISTS receipt_id INTEGER;');
       console.log('   CREATE INDEX IF NOT EXISTS idx_receipt_items_receipt_id ON receipt_items(receipt_id);');
       console.log('');
-      console.log('   После добавления колонки запустите: node scripts/fill-receipt-ids.js');
+      console.log('   После добавления колонки запустите: node scripts/add-receipt-ids-column.js');
       return;
     }
 

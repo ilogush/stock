@@ -3,8 +3,11 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie } from '../../../lib/actionLogger';
 import { logAction, ActionTypes } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default withPermissions(
+const handler = withPermissions(
   RoleChecks.canManageCompanies,
   'Доступ к компаниям разрешен только администраторам'
 )(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -19,7 +22,9 @@ export default withPermissions(
         .single();
 
       if (error) {
-        console.error('Ошибка при получении компании:', error);
+        log.error('Ошибка при получении компании', error as Error, {
+          endpoint: '/api/companies/[id]'
+        });
         return res.status(500).json({ error: 'Ошибка при получении компании' });
       }
 
@@ -34,7 +39,9 @@ export default withPermissions(
         brands: brands || [] 
       });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при получении компании', error as Error, {
+        endpoint: '/api/companies/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -65,9 +72,12 @@ export default withPermissions(
         .single();
 
       if (error) {
-        console.error('Ошибка при обновлении компании:', error);
+        const actorId = getUserIdFromCookie(req);
+        log.error('Ошибка при обновлении компании', error as Error, {
+          endpoint: '/api/companies/[id]',
+          userId: actorId || undefined
+        });
         try {
-          const actorId = getUserIdFromCookie(req);
           await logAction({ user_id: actorId || 0, action_name: ActionTypes.COMPANY_UPDATE, status: 'error', details: `Ошибка обновления компании ID ${id}: ${error.message}` });
         } catch {}
         return res.status(500).json({ error: `Ошибка при обновлении компании: ${error.message}` });
@@ -79,7 +89,9 @@ export default withPermissions(
       } catch {}
       return res.status(200).json(data);
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при обновлении компании', error as Error, {
+        endpoint: '/api/companies/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
@@ -133,9 +145,12 @@ export default withPermissions(
         .eq('id', id);
 
       if (error) {
-        console.error('Ошибка при удалении компании:', error);
+        const actorId = getUserIdFromCookie(req);
+        log.error('Ошибка при удалении компании', error as Error, {
+          endpoint: '/api/companies/[id]',
+          userId: actorId || undefined
+        });
         try {
-          const actorId = getUserIdFromCookie(req);
           await logAction({ user_id: actorId || 0, action_name: ActionTypes.COMPANY_DELETE, status: 'error', details: `Ошибка удаления компании ID ${id}: ${error.message}` });
         } catch {}
         return res.status(500).json({ error: `Ошибка при удалении компании: ${error.message}` });
@@ -148,10 +163,17 @@ export default withPermissions(
 
       return res.status(200).json({ message: 'Компания успешно удалена' });
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при удалении компании', error as Error, {
+        endpoint: '/api/companies/[id]'
+      });
       return res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   }
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
-}); 
+});
+
+// Применяем CSRF защиту для PUT/DELETE и rate limiting для всех методов
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
+); 

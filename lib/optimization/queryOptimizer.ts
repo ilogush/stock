@@ -3,7 +3,6 @@
  */
 
 import { supabaseAdmin } from '../supabaseAdmin';
-import { cache } from '../unified/cache';
 
 export interface QueryOptimizationConfig {
   enableCache: boolean;
@@ -255,11 +254,11 @@ class QueryOptimizer {
     const results = new Map<number, T>();
     const cacheKey = `related:${mainTable}:${mainIds.join(',')}:${relatedTables.map(t => t.table).join(',')}`;
 
-    // Проверяем кэш
+    // Проверяем кэш (внутренний кэш класса)
     if (options.enableCache !== false) {
-      const cached = cache.getOnly(cacheKey);
-      if (cached) {
-        return new Map(cached);
+      const cached = this.queryCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < cached.ttl) {
+        return new Map(cached.data);
       }
     }
 
@@ -295,9 +294,13 @@ class QueryOptimizer {
       results.set(mainId, relatedData as T);
     });
 
-    // Сохраняем в кэш
+    // Сохраняем в кэш (внутренний кэш класса)
     if (options.enableCache !== false) {
-      cache.set(cacheKey, Array.from(results.entries()), { ttl: 300000, tags: ['related'] });
+      this.queryCache.set(cacheKey, {
+        data: Array.from(results.entries()),
+        timestamp: Date.now(),
+        ttl: 300000
+      });
     }
 
     return results;
@@ -308,9 +311,15 @@ class QueryOptimizer {
    */
   clearQueryCache(pattern?: string): void {
     if (pattern) {
-      cache.invalidateByPattern(pattern);
+      // Очищаем кэш по паттерну
+      for (const key of this.queryCache.keys()) {
+        if (key.includes(pattern)) {
+          this.queryCache.delete(key);
+        }
+      }
     } else {
-      cache.invalidateByTags(['query', 'related']);
+      // Очищаем весь кэш
+      this.queryCache.clear();
     }
   }
 
@@ -323,13 +332,13 @@ class QueryOptimizer {
     averageExecutionTime: number;
     cacheHitRate: number;
   } {
-    const cacheStats = cache.getStats();
+    const cacheSize = this.queryCache.size;
     
     return {
-      cacheSize: cacheStats.size,
-      queryCount: cacheStats.hits + cacheStats.misses,
+      cacheSize,
+      queryCount: 0, // TODO: добавить счетчик запросов
       averageExecutionTime: 0, // Будет обновлено при выполнении запросов
-      cacheHitRate: cacheStats.hitRate
+      cacheHitRate: 0 // TODO: добавить подсчет hit rate
     };
   }
 }

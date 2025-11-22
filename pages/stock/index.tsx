@@ -23,13 +23,13 @@ type StockProduct = {
   article: string;
   name: string;
   brandName?: string | null;
-  colors: Array<{
+  color: {
     colorId: number;
     colorName: string;
     sizes: number[];
     total: number;
     images?: string[];
-  }>;
+  };
   total: number;
   images?: string[];
 };
@@ -377,14 +377,16 @@ const StockPage: NextPage = () => {
                         </div>
                       </td>
                       <td className="table-cell">{row.brandName || '—'}</td>
-                      <td className="table-cell-mono">{row.article}</td>
+                      <td className="table-cell-mono">
+                        {row.article && /^[0-9]+$/.test(row.article) ? `L${row.article}` : (row.article || '—')}
+                      </td>
                       <td className="table-cell w-60">
                         <div className="break-words whitespace-normal leading-relaxed">{row.name}</div>
                       </td>
                       <td className="table-cell">
                         <span className="font-medium">{row.color.colorName}</span>
                       </td>
-                      {row.color.sizes.map((qty, sizeIndex) => (
+                      {row.color.sizes.map((qty: number, sizeIndex: number) => (
                         <td key={sizeIndex} className="table-cell text-center">
                           <span className={qty === 0 ? 'text-gray-400' : 'font-semibold'}>
                             {qty === 0 ? '—' : qty}
@@ -423,10 +425,10 @@ const StockPage: NextPage = () => {
             <div className="mt-4 mb-2 text-sm text-gray-600 border-t border-gray-200 pt-3">
               <div className="flex justify-between items-center">
                 <span>
-                  Итог: <strong>{items.reduce((sum, item) => sum + item.total, 0)}</strong>
+                  Артикулы: <strong>{pagination.total}</strong>
                 </span>
                 <span>
-                  Общее количество позиций: <strong>{pagination.total}</strong>
+                  Итог: <strong>{items.reduce((sum, item) => sum + (item.color?.total || 0), 0)}</strong>
                 </span>
               </div>
             </div>

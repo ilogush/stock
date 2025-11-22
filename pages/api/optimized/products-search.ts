@@ -73,10 +73,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .ilike('color.name', `%${searchTerm}%`);
         
         // Объединяем все найденные ID
-        const allProductIds = new Set();
-        if (directProducts) directProducts.forEach(p => allProductIds.add(p.id));
-        if (brandProducts) brandProducts.forEach(p => allProductIds.add(p.id));
-        if (colorProducts) colorProducts.forEach(p => allProductIds.add(p.id));
+        const allProductIds = new Set<number>();
+        if (directProducts) directProducts.forEach((p: any) => allProductIds.add(p.id));
+        if (brandProducts) brandProducts.forEach((p: any) => allProductIds.add(p.id));
+        if (colorProducts) colorProducts.forEach((p: any) => allProductIds.add(p.id));
         
         // Применяем фильтр по найденным ID
         if (allProductIds.size > 0) {

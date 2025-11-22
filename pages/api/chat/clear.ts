@@ -1,8 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie } from '../../../lib/actionLogger';
+import { withCsrfProtection } from '../../../lib/csrf';
+import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
+import { log } from '../../../lib/loggingService';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'DELETE') {
     try {
       // Получаем ID пользователя из cookie
@@ -34,7 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .neq('id', 0); // Удаляем все записи
 
       if (error) {
-        console.error('Ошибка очистки чата:', error);
+        log.error('Ошибка очистки чата', error as Error, {
+          endpoint: '/api/chat/clear',
+          userId: userId || undefined
+        });
         return res.status(500).json({ error: 'Ошибка очистки чата' });
       }
 
@@ -44,7 +50,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
     } catch (error) {
-      console.error('Ошибка сервера:', error);
+      log.error('Ошибка сервера при очистке чата', error as Error, {
+        endpoint: '/api/chat/clear'
+      });
       return res.status(500).json({ 
         error: 'Внутренняя ошибка сервера',
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -54,4 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
+
+// Применяем CSRF защиту и rate limiting для модифицирующих операций
+export default withCsrfProtection(
+  withRateLimit(RateLimitConfigs.WRITE)(handler)
+);
 
