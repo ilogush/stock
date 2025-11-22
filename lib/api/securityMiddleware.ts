@@ -1,33 +1,25 @@
 /**
  * Универсальный middleware для безопасности API
- * Объединяет CSRF защиту, rate limiting и логирование
+ * Объединяет rate limiting и логирование
  */
 
 import { NextApiRequest, NextApiResponse } from 'next';
-import { withCsrfProtection } from '../csrf';
 import { withRateLimit, RateLimitConfigs } from '../rateLimiter';
 import { log } from '../loggingService';
 
 /**
  * Комбинированный middleware для модифицирующих операций
- * Применяет CSRF защиту и rate limiting
+ * Применяет rate limiting
  */
 export function withSecurityMiddleware(
   handler: (req: NextApiRequest, res: NextApiResponse) => Promise<void | NextApiResponse>,
   options: {
-    csrf?: boolean;
     rateLimit?: typeof RateLimitConfigs[keyof typeof RateLimitConfigs];
-    skipCsrfForGet?: boolean;
   } = {}
 ) {
-  const { csrf = true, rateLimit = RateLimitConfigs.WRITE, skipCsrfForGet = true } = options;
+  const { rateLimit = RateLimitConfigs.WRITE } = options;
 
   let wrappedHandler = handler;
-
-  // Применяем CSRF защиту
-  if (csrf) {
-    wrappedHandler = withCsrfProtection(wrappedHandler);
-  }
 
   // Применяем rate limiting
   if (rateLimit) {
@@ -86,25 +78,21 @@ function withSecurityLogging(
 export const SecurityConfigs = {
   // Для модифицирующих операций (POST, PUT, DELETE)
   WRITE: {
-    csrf: true,
     rateLimit: RateLimitConfigs.WRITE
   },
   
   // Для чтения (GET)
   READ: {
-    csrf: false,
     rateLimit: RateLimitConfigs.READ
   },
   
   // Для авторизации
   AUTH: {
-    csrf: false, // CSRF не нужен для login, так как это публичный endpoint
     rateLimit: RateLimitConfigs.AUTH
   },
   
   // Для публичных endpoints
   PUBLIC: {
-    csrf: false,
     rateLimit: RateLimitConfigs.API
   }
 };

@@ -5,7 +5,6 @@ import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../..
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 import { normalizeColorId, extractSizeNumber, normalizeSizeCode } from '../../../lib/utils/normalize';
 import { CHILDREN_SIZES, CHILDREN_CATEGORY_ID } from '../../../lib/constants';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -144,7 +143,5 @@ const handler = withPermissions(
   }
 });
 
-// Применяем CSRF защиту и rate limiting для модифицирующих операций
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
-);
+// Применяем rate limiting для модифицирующих операций
+export default withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler;

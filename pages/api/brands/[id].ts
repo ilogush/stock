@@ -2,7 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { getUserIdFromCookie, logUserActionDirect as logActionGeneric } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -51,7 +50,7 @@ const handler = withPermissions(
             phone: item.user?.phone,
             role_display: item.user?.role?.display_name,
             name: `${item.user?.first_name || ''} ${item.user?.last_name || ''}`.trim()
-          }));
+          });
         }
       } catch (managerError) {
 
@@ -109,7 +108,5 @@ const handler = withPermissions(
   return res.status(405).json({ error: 'Метод не поддерживается' });
 });
 
-// Применяем CSRF защиту для PUT и rate limiting для всех методов
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
+export default withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
 ); 

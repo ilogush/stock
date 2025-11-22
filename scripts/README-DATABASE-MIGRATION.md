@@ -55,3 +55,4 @@ node scripts/test-receipt-creation.js
 ## Файлы SQL
 
 - `sql/add-receipt-realization-ids.sql` - SQL миграция для добавления колонок
+

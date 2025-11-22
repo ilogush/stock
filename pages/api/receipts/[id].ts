@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -168,7 +167,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
 
-// Применяем CSRF защиту для DELETE и rate limiting для всех методов
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.API)(handler)
-); 
+// Применяем rate limiting для всех методов
+export default withRateLimit(RateLimitConfigs.API)(handler); 

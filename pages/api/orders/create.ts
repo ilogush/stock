@@ -3,7 +3,6 @@ import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { validateStockForItems } from '../../../lib/stockValidator';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { normalizeColorId, normalizeSizeCode } from '../../../lib/utils/normalize';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -26,7 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ...item,
         size_code: normalizeSizeCode(item.size_code), // Нормализуем размер
         color_id: normalizeColorId(item.color_id) // Нормализуем цвет
-      }));
+      });
       
       const stockValidation = await validateStockForItems(normalizedItems);
       
@@ -66,7 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         color_id: normalizeColorId(item.color_id), // Нормализуем цвет
         qty: item.qty,
         price: item.price || 0
-      }));
+      });
 
       const { error: itemsError } = await supabaseAdmin
         .from('order_items')
@@ -104,7 +103,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
 
-// Применяем CSRF защиту и rate limiting для модифицирующих операций
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.WRITE)(handler)
-);
+export default withRateLimit(RateLimitConfigs.WRITE)(handler);

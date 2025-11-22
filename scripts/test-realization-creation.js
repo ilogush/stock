@@ -278,3 +278,4 @@ testRealizationCreation()
     console.error('\n💥 Критическая ошибка:', error);
     process.exit(1);
   });
+

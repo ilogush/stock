@@ -2,7 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { notificationService } from '../../../lib/features/notifications';
 import { withApiMiddleware, apiConfigs, handleDatabaseError, sendErrorResponse } from '../../../lib/unified';
 import { AuthenticatedRequest } from '../../../lib/api/roleAuth';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 
 /**
@@ -77,7 +76,5 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   });
 }
 
-// Применяем CSRF защиту для POST и rate limiting для всех методов
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
+export default withRateLimit(RateLimitConfigs.API)(handler as any) as typeof handler
 );

@@ -5,7 +5,6 @@ import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../..
 import { withManagement, AuthenticatedRequest, logAccess } from '../../../lib/api/roleAuth';
 import { createItemResponse, createErrorResponse } from '../../../lib/api/standardResponse';
 import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorHandling';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -75,7 +74,5 @@ const handler = withManagement(async function handler(req: AuthenticatedRequest,
   return res.status(405).json(errorResponse);
 });
 
-// Применяем CSRF защиту и rate limiting для модифицирующих операций
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
+export default withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
 ); 

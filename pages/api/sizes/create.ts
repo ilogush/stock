@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -31,7 +30,7 @@ const handler = withPermissions(
       }
 
       const existingCodes = (existingSizes || []).map((s: any) => s.code);
-      const newSizes = sizes.filter(size => !existingCodes.includes(size));
+      const newSizes = sizes.filter(size => !existingCodes.includes(size);
 
       if (newSizes.length === 0) {
         return res.status(200).json({ 
@@ -72,7 +71,5 @@ const handler = withPermissions(
   return res.status(405).json({ error: 'Метод не поддерживается' });
 });
 
-// Применяем CSRF защиту и rate limiting для модифицирующих операций
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
+export default withRateLimit(RateLimitConfigs.WRITE)(handler as any) as typeof handler
 );

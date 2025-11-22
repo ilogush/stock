@@ -6,7 +6,6 @@ import { normalizeColorName } from '../../../lib/colorNormalizer';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks } from '../../../lib/api/roleAuth';
 import { normalizeArticle } from '../../../lib/utils/normalize';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -165,7 +164,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .single();
 
       if (currentProduct.data && currentProduct.data.color_id !== parseInt(color_id)) {
-        const colorCheck = await canChangeProductColor(parseInt(id as string));
+        const colorCheck = await canChangeProductColor(parseInt(id as string);
         
         if (!colorCheck.canChange) {
           return res.status(400).json({
@@ -396,8 +395,5 @@ const handlerWithAuth = withPermissions(
   'Недостаточно прав для управления товарами'
 )(handler);
 
-// Применяем CSRF защиту и rate limiting для модифицирующих операций
-// GET запросы не требуют CSRF, но требуют rate limiting
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.WRITE)(handlerWithAuth as any) as typeof handlerWithAuth
-);
+// Применяем rate limiting для модифицирующих операций
+export default withRateLimit(RateLimitConfigs.WRITE)(handlerWithAuth as any) as typeof handlerWithAuth;

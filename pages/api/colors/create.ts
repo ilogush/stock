@@ -2,7 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { getHexFromName } from '../../../lib/colorService';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -69,7 +68,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.status(405).json({ error: 'Метод не поддерживается' });
 }
 
-// Применяем CSRF защиту и rate limiting для модифицирующих операций
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.WRITE)(handler)
-);
+export default withRateLimit(RateLimitConfigs.WRITE)(handler);

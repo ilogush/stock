@@ -2,7 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
 import { logUserActionDirect as logUserAction, getUserIdFromCookie } from '../../../lib/actionLogger';
 import { withPermissions, RoleChecks, AuthenticatedRequest } from '../../../lib/api/roleAuth';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
@@ -312,7 +311,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       const { count: productCount } = await supabaseAdmin
         .from('products')
         .select('*', { count: 'exact', head: true })
-        .eq('color_id', parseInt(id as string));
+        .eq('color_id', parseInt(id as string);
       const totalCount = (productCount || 0);
 
       if (totalCount > 0) {
@@ -328,7 +327,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       const { error } = await supabaseAdmin
         .from('colors')
         .delete()
-        .eq('id', parseInt(id as string));
+        .eq('id', parseInt(id as string);
 
       if (error) {
         const deleteErrorUserId = getUserIdFromCookie(req);
@@ -365,7 +364,5 @@ const handlerWithAuth = withPermissions(
   'Доступ к цветам ограничен'
 )(handler);
 
-// Применяем CSRF защиту для PUT/DELETE и rate limiting для всех методов
-export default withCsrfProtection(
-  withRateLimit(RateLimitConfigs.API)(handlerWithAuth as any) as typeof handlerWithAuth
+export default withRateLimit(RateLimitConfigs.API)(handlerWithAuth as any) as typeof handlerWithAuth
 ); 

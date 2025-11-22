@@ -8,7 +8,6 @@ import { handleDatabaseError, handleGenericError } from '../../../lib/api/errorH
 import { ValidationService } from '../../../lib/validationService';
 import { DatabaseService } from '../../../lib/databaseService';
 import { normalizeArticle } from '../../../lib/utils/normalize';
-import { withCsrfProtection } from '../../../lib/csrf';
 import { withRateLimit, RateLimitConfigs } from '../../../lib/rateLimiter';
 import { log } from '../../../lib/loggingService';
 
